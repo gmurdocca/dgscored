@@ -1,2 +1,2 @@
 # dgscored
-DGScored is a Disc Golf league tracking app
+DGScored is a Disc Golf league tracking app.
