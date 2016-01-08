@@ -1,0 +1,15 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {% trans 'DG League Tracker - site admin' %}{% endblock %}
+
+{% block branding %}
+    <h1 id="site-name">{% trans 'DG League Tracker' %}</h1>
+    {% if request.session.last_site_url %}
+        <a href="{{ request.session.last_site_url }}"><h4> &nbsp; &nbsp; &larr; back to Leagues</h4></a>
+    {% else %}
+        <a href="/"><h4> &nbsp; &nbsp; &larr; back to Leagues</h4></a>
+    {% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Disc Golf League Tracker</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="/static/css/scrolling-nav.css" rel="stylesheet">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+
+<!-- The #page-top ID is part of the scrolling feature - the data-spy and data-target are part of the built-in Bootstrap scrollspy function -->
+
+<body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a style="color: rgb(67, 196, 67)" class="navbar-brand page-scroll" href="#page-top">DG League Tracker</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse navbar-ex1-collapse">
+                <ul class="nav navbar-nav">
+                    <!-- Hidden li included to remove active class from about link when scrolled up past about section -->
+                    <li class="hidden">
+                        <a class="page-scroll" href="#page-top"></a>
+                    </li>
+                    <li>
+                        <a class="page-scroll" data-toggle="collapse" data-target=".navbar-ex1-collapse" href="#intro">Standings</a>
+                    </li>
+                    <li>
+                        <a class="page-scroll" data-toggle="collapse" data-target=".navbar-ex1-collapse" href="#events">Events</a>
+                    </li>
+                    <li>
+                        <a class="page-scroll" data-toggle="collapse" data-target=".navbar-ex1-collapse" href="#scorecards">Scorecards</a>
+                    </li>
+                    <li>
+                        <a class="page-scroll" data-toggle="collapse" data-target=".navbar-ex1-collapse" href="#about">About</a>
+                    </li>
+                    <li>
+                        <a style="color: rgb(130, 130, 130)" href="/admin">Admin</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <!-- Intro Section -->
+    <section id="intro" class="intro-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12">
+                    <h1>Current Standings</h1>
+                    {% for league in leagues  %}
+                    <hr>
+                    <h4 style="color: rgb(67, 196, 67)">{{ league.name }}</h4>
+                    <h5>League events to date: {{ league.get_event_count }}</h5>
+                    <table class="table table-striped text-left">
+                      <tr><th>Player</th><th>Current Handicap</th><th>Total Points</th></tr>
+                      {% for player, points in league.get_standings.items %}
+                      <tr><td>{{ player }}</td><td>{{ player.handicap }}</td><td>{{ points }}</td></tr>
+                      {% endfor %}
+                    </table>
+                    {% endfor %}
+                    <!-- <a class="btn btn-default page-scroll" href="#leagues">Leagues</a> -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="events" class="intro-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12">
+                    <h1>League Days &amp; Events</h1>
+                    {% for league in leagues %}
+                    <hr>
+                    <h4>{{ league.name }}</h4>
+                    {% if not league.events.all %}
+                    No events recorded.
+                    {% endif %}
+                    {% for event in league.events.all %}
+                    <button class="btn-block btn-link" data-toggle="collapse" data-target="#event_{{ event.id }}">{{ event.name }} on {{ event.get_date }}</button>
+                    <div id="event_{{ event.id }}" class="collapse">
+                      {{ event.get_course }}/{{ event.get_layout }}, Par {{ event.get_layout.get_par }}
+                    <small>
+                    <table class="table table-striped text-left">
+                      <tr><th>Rank</th><th>Player</th><th>Rounds Played</th><th>HC Score</th><th>Points Earned</th>{% if event.awards.all %}<th>Awards</th>{% endif %}</tr>
+                      {% for player, stats in event.get_result.items %}
+                      <tr><td>{{ forloop.counter }}</td><td>{{ player }}</td><td>{{ stats.round_count }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.points_earned }}</td>{% if event.awards.all %}<td>{{ stats.awards }}</td>{% endif %}</tr>
+                      {% endfor %}
+                    </table>
+                    </small>
+                    </div>
+                    {% endfor %}
+                    <hr>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="scorecards" class="intro-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12">
+                    <h1>Score Cards</h1>
+                    {% for league in leagues %}
+                    <hr>
+                    <h4>{{ league.name }}</h4>
+                    {% if not league.events.all %}
+                    No events recorded.
+                    {% endif %}
+                    {% for event in league.events.all %}
+                    {{ event.name }}
+                    {% if not event.cards.all %}
+                    No score cards recorded.
+                    {% endif %}
+                    {% for card in event.cards.all %}
+                    <button class="btn-block btn-link" data-toggle="collapse" data-target="#card_{{ card.id }}">{{ card.get_date }} <small>({{ card.get_players }})</small></button>
+                    <div id="card_{{ card.id }}" class="collapse">
+                      Course: {{ card.course }}/{{ card.get_layout }} (Par {{ card.get_layout.get_par }})
+                    <small>
+                    <table class="table table-striped text-left">
+                      <tr><th>Player</th><th>HC</th><th>Score</th><th>+/-</th><th>HC Score</th><th>HC +/-</th></tr>
+                      {% for player, stats in card.get_result.items %}
+                      <tr><td>{{ forloop.counter }}. {{ player }}</td><td>{{ stats.handicap }}</td><td>{{ stats.scratch_score }}</td><td>{{ stats.scratch_delta }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.handicap_delta }}</td></tr>
+                      {% endfor %}
+                    </table>
+                    </small>
+                    </div>
+                    {% endfor %}
+                    {% endfor %}
+                    <hr>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="about" class="intro-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12">
+                    <h1>About</h1>
+                    DGScored is a disc golf league tracking app.<br />
+                    <br />
+                    Contact: <a href="mailto:george@murdocca.com.au?Subject=DG%20League%20Tracker" target="_top">george@murdocca.com.au</a><br />
+                    <br />
+                    <img src="/static/img/logo.png">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- jQuery -->
+    <script src="/static/js/jquery.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="/static/js/bootstrap.min.js"></script>
+
+    <!-- Scrolling Nav JavaScript -->
+    <script src="/static/js/jquery.easing.min.js"></script>
+    <script src="/static/js/scrolling-nav.js"></script>
+
+</body>
+
+</html>
