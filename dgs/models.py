@@ -16,10 +16,14 @@ class Player(models.Model):
         return "%s %s" % (self.first_name, self.last_name)
 
     @property
+    def name(self):
+        return self.full_name
+
+    @property
     def last_name_initial(self):
         return self.last_name[0]
 
-    @peoperty
+    @property
     def shortest_name(self):
         """
         Returns first name if unique, else first_name + last_name_initial if unique,
@@ -37,7 +41,7 @@ class Player(models.Model):
         return self.full_name
 
     def __unicode__(self):
-        return self.name
+        return self.full_name
 
 
 class Contestant(models.Model):
@@ -52,9 +56,13 @@ class Contestant(models.Model):
         else:
             return self.handicap
 
+    def __unicode__(self):
+        return self.player.full_name
+
+
 class Hole(models.Model):
     number = models.IntegerField()
-    par = models.IntegerField()
+    par = models.IntegerField(default=3)
 
     def __unicode__(self):
         return "Hole %s (Par %s)" % (self.number, self.par)
@@ -93,24 +101,24 @@ class Score(models.Model):
     date = models.DateTimeField()
 
     def __unicode__(self):
-        return "%s - %s - %s" % (self.total_strokes, self.date.ctime(), self.player)
+        return "%s - %s - %s" % (self.strokes, self.date.ctime(), self.contestant.player.name)
 
 
 class Card(models.Model):
     course = models.ForeignKey(Course)
     layout = models.ForeignKey(Layout)
     date = models.DateTimeField()
-    scores = models.ManyToManyField(TotalScore, blank=True)
+    scores = models.ManyToManyField(Score, blank=True)
 
     @property
     def players(self):
         """
         Returns a list of Players who are competing on this card
         """
-        return [c.player for c in self.contestants.all()]
+        return [s.contestant for s in self.scores.all()]
 
     def __unicode__(self):
-        return "%s (%s)" % (self.date, ", ".join([p.name for p in self.players]))
+        return "%s (%s)" % (self.date, ", ".join([str(p) for p in self.players]))
 
     def get_date(self):
         return self.date.strftime("%a %b %d %H:%M, %Y")
@@ -144,7 +152,7 @@ class Award(models.Model):
     contestant = models.ForeignKey(Contestant)
 
     def __unicode__(self):
-        return "%s: %s" % (self.name, self.player.name)
+        return "%s: %s" % (self.name, self.contestant.player.name)
 
 
 class Event(models.Model):
@@ -209,7 +217,7 @@ class Event(models.Model):
 
 class League(models.Model):
     name = models.CharField(max_length=50)
-    contentants = models.ManyToManyField(Contestant)
+    contentants = models.ManyToManyField(Contestant, blank=True)
     events = models.ManyToManyField(Event, blank=True)
 
     def __unicode__(self):
