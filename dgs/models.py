@@ -7,112 +7,130 @@ import numpy
 class Player(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    handicap = models.IntegerField(default=0)
-
-    def calculate_handicap(self):
-        best_two_from_five_previous_results = \
-                sorted([float(c.get_result()[self]["scratch_delta"]) for c in self.card_set.order_by('-id')[:5]])[:2]
-        if not best_two_from_five_previous_results:
-            return 0
-        new_hc = int(numpy.mean(best_two_from_five_previous_results))
-        self.handicap = new_hc
-        self.save()
-        return new_hc
+    email_address = models.EmailField(blank=True, null=True)
+    phone_number = models.TextField(blank=True, null=True)
+    pdga_number = models.IntegerField(blank=True, null=True)
 
     @property
-    def name(self):
+    def full_name(self):
         return "%s %s" % (self.first_name, self.last_name)
 
+    @property
+    def last_name_initial(self):
+        return self.last_name[0]
+
+    @peoperty
+    def shortest_name(self):
+        """
+        Returns first name if unique, else first_name + last_name_initial if unique,
+        else first_name + last name
+        """
+        same_first_names = Player.objects.filter(first_name__iexact=self.first_name)
+        if len(same_first_names) == 1:
+            return self.first_name
+        else:
+            same_last_name_initial = {}
+            for player in same_first_names:
+                same_last_name_initial[player.last_name_initial] = player
+            if len(same_last_name_initial[self.last_name_initial]) == 1:
+                return "%s %s" % (self.first_name, self.last_name_initial)
+        return self.full_name
+
     def __unicode__(self):
         return self.name
 
 
-class Course(models.Model):
-    name = models.CharField(max_length=50)
+class Contestant(models.Model):
+    player = models.ForeignKey(Player)
+    initial_handicap = models.IntegerField(default=0)
+    handicap = models.IntegerField(blank=True, null=True, default=None, editable=False)
 
-    def __unicode__(self):
-        return self.name
-
-
-class Layout(models.Model):
-    name = models.CharField(max_length=50)
-    course = models.ForeignKey(Course)
-
-    def __unicode__(self):
-        return self.name
-
-    def get_par(self):
-        holes = self.hole_set.all()
-        return sum([h.par for h in holes])
-
+    @property
+    def handicap(self):
+        if self.handicap == None:
+            return self.initial_handicap
+        else:
+            return self.handicap
 
 class Hole(models.Model):
     number = models.IntegerField()
     par = models.IntegerField()
-    layout = models.ForeignKey(Layout)
-    course = models.ForeignKey(Course)
 
     def __unicode__(self):
-        return "Hole %s: Par %s, %s layout, %s" % (self.number, self.par, self.layout, self.course)
+        return "Hole %s (Par %s)" % (self.number, self.par)
 
 
-class TotalScore(models.Model):
+class Layout(models.Model):
+    name = models.CharField(max_length=50)
+    holes = models.ManyToManyField(Hole)
+
+    @property
+    def par(self):
+        return sum([h.par for h in self.holes.all()])
+
+    def __unicode__(self):
+        return self.name
+
+    @property
+    def hole_count(self):
+        return self.holes.count()
+
+
+class Course(models.Model):
+    name = models.CharField(max_length=50)
+    layouts = models.ManyToManyField(Layout)
+
+    def __unicode__(self):
+        return self.name
+
+
+class Score(models.Model):
     """
     Model for overall scratch score for a player on a card after their round
     """
-    player = models.ForeignKey(Player)
-    current_handicap = models.IntegerField(blank=True, null=True)
-    holes = models.ManyToManyField(Hole)
-    total_strokes = models.IntegerField()
-    date = models.DateTimeField(auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        self.current_handicap = self.player.handicap
-        super(TotalScore, self).save(*args, **kwargs)
+    contestant = models.ForeignKey(Contestant)
+    strokes = models.IntegerField()
+    date = models.DateTimeField()
 
     def __unicode__(self):
         return "%s - %s - %s" % (self.total_strokes, self.date.ctime(), self.player)
 
-    class Meta:
-        verbose_name = "Score"
-        verbose_name_plural = "Scores"
-
 
 class Card(models.Model):
     course = models.ForeignKey(Course)
-    players = models.ManyToManyField(Player)
-    date = models.DateTimeField(auto_now_add=True)
-    hole_count = models.IntegerField(default=0)
-    total_scores = models.ManyToManyField(TotalScore, blank=True)
+    layout = models.ForeignKey(Layout)
+    date = models.DateTimeField()
+    scores = models.ManyToManyField(TotalScore, blank=True)
+
+    @property
+    def players(self):
+        """
+        Returns a list of Players who are competing on this card
+        """
+        return [c.player for c in self.contestants.all()]
 
     def __unicode__(self):
-        return "%s (%s)" % (self.date, ", ".join([p.name for p in self.players.all()]))
-
-    def get_layout(self):
-        return self.total_scores.last().holes.last().layout
+        return "%s (%s)" % (self.date, ", ".join([p.name for p in self.players]))
 
     def get_date(self):
         return self.date.strftime("%a %b %d %H:%M, %Y")
 
-    def get_players(self):
-        return ", ".join([str(p) for p in self.players.all()])
-
-    def get_result(self):
+    @property
+    def result(self):
         result = OrderedDict()
-        for tscore in self.total_scores.all():
-            player = tscore.player
-            layout_par = tscore.holes.last().layout.get_par()
-            scratch_score = tscore.total_strokes
-            scratch_delta = scratch_score - layout_par
-            handicap = tscore.current_handicap
+        for score in self.scores.all():
+            contestant = score.contestant.player
+            scratch_score = score.strokes
+            scratch_delta = scratch_score - self.layout.par
+            handicap = score.contestant.handicap
             handicap_score = scratch_score - handicap
-            handicap_delta = handicap_score - layout_par
-            result[player] = {}
-            result[player]["handicap"] = handicap
-            result[player]["scratch_score"] = scratch_score
-            result[player]["scratch_delta"] = str(scratch_delta) if scratch_delta < 0 else "+%s" % scratch_delta
-            result[player]["handicap_score"] = handicap_score
-            result[player]["handicap_delta"] = handicap_delta if handicap_delta < 0 else "+%s" % handicap_delta
+            handicap_delta = handicap_score - self.layout.par
+            result[contestant] = {}
+            result[contestant]["handicap"] = handicap
+            result[contestant]["scratch_score"] = scratch_score
+            result[contestant]["scratch_delta"] = str(scratch_delta) if scratch_delta < 0 else "+%s" % scratch_delta
+            result[contestant]["handicap_score"] = handicap_score
+            result[contestant]["handicap_delta"] = handicap_delta if handicap_delta < 0 else "+%s" % handicap_delta
         # sort by rank
         result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["handicap_score"]))
         return result
@@ -120,25 +138,27 @@ class Card(models.Model):
 
 class Award(models.Model):
     """
-    Generic award model, eg. CTP
+    Generic award model, eg. Closest To Pin
     """
     name = models.CharField(max_length=50, blank=True, null=True)
-    player = models.ForeignKey(Player)
+    contestant = models.ForeignKey(Contestant)
 
     def __unicode__(self):
         return "%s: %s" % (self.name, self.player.name)
+
 
 class Event(models.Model):
     """
     Generic event model, eg. a league day
     """
     name = models.CharField(max_length=50, blank=True, null=True, help_text="Name of event, eg 'September League Day'")
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField()
     rounds = models.IntegerField(help_text="Number of rounds that players are required to complete during this league event")
     awards = models.ManyToManyField(Award, blank=True)
     cards = models.ManyToManyField(Card, blank=True)
 
-    def get_date(self):
+    @property
+    def render_date(self):
         return self.date.strftime("%a %b %d, %Y")
 
     def get_points(self, rank):
@@ -154,24 +174,24 @@ class Event(models.Model):
 
     def get_result(self):
         """
-        Returns points earned by players during this event in the format:
+        Returns points earned by players during this event
         """
         event_result = OrderedDict()
-        for card in self.cards.all():
+        # only use the first self.rounds cards
+        for card in self.cards.order_by("date")[:self.rounds]:
             result = card.get_result()
-            for player in result:
-                stats = result[player]
-                event_result[player] = defaultdict(int)
-                event_result[player]['round_count'] += 1
-                event_result[player]['handicap_score'] += stats['handicap_score']
-                event_result[player]['awards'] = "<br />".join([a.name for a in self.awards.filter(player=player)])
+            for contestant in result:
+                stats = result[contestant]
+                event_result[contestant] = defaultdict(int)
+                event_result[contestant]['round_count'] += 1
+                event_result[contestant]['handicap_score'] += stats['handicap_score']
+                event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
         # sort by rank
         event_result = OrderedDict(sorted(event_result.iteritems(), key=lambda x: x[1]["handicap_score"]))
         # assign points earned
         for player in event_result:
-            if event_result[player]['round_count'] < self.rounds < event_result[player]['round_count']:
-                # give player minimum possible points if they completed less than or more than the required number
-                # of rounds.
+            if self.rounds < event_result[player]['round_count']:
+                # player completed less than the required rounds, assign minimum possible points. 
                 event_result[player]['points_earned'] = self.get_points(-1)
             else:
                 rank = event_result.keys().index(player)
@@ -179,15 +199,8 @@ class Event(models.Model):
         return event_result
 
     def save(self, *args, **kwargs):
-        for player in self.get_result():
-            player.calculate_handicap()
         super(Event, self).save(*args, **kwargs)
-
-    def get_course(self):
-        return self.cards.last().course
-
-    def get_layout(self):
-        return self.cards.last().total_scores.last().holes.last().layout
+        # TODO recalculate curent handicaps from the first event using initial handicap for contestant.
 
     def __unicode__(self):
         name = self.name or "Event"
@@ -196,6 +209,7 @@ class Event(models.Model):
 
 class League(models.Model):
     name = models.CharField(max_length=50)
+    contentants = models.ManyToManyField(Contestant)
     events = models.ManyToManyField(Event, blank=True)
 
     def __unicode__(self):
@@ -213,6 +227,3 @@ class League(models.Model):
         # sort by rank
         standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1], reverse=True))
         return standings
-
-    def get_event_count(self):
-        return self.events.count()
