@@ -82,11 +82,11 @@
                     {% for league in leagues  %}
                     <hr>
                     <h4 style="color: rgb(67, 196, 67)">{{ league.name }}</h4>
-                    <h5>League events to date: {{ league.get_event_count }}</h5>
+                    <h5>League events to date: {{ league.events.count }}</h5>
                     <table class="table table-striped text-left">
-                      <tr><th>Player</th><th>Current Handicap</th><th>Total Points</th></tr>
-                      {% for player, points in league.get_standings.items %}
-                      <tr><td>{{ player }}</td><td>{{ player.handicap }}</td><td>{{ points }}</td></tr>
+                      <tr><th>Position</th><th>Player</th><th>Current Handicap</th><th>Total Points</th></tr>
+                      {% for player, stats in league.result.items %}
+                      <tr><td>{{ forloop.counter }}</td><td>{{ player }}</td><td>{{ stats.handicap }}</td><td>{{ stats.points }}</td></tr>
                       {% endfor %}
                     </table>
                     {% endfor %}
@@ -109,14 +109,14 @@
                     No events recorded.
                     {% endif %}
                     {% for event in league.events.all %}
-                    <button class="btn-block btn-link" data-toggle="collapse" data-target="#event_{{ event.id }}">{{ event.name }} on {{ event.get_date }}</button>
+                    <button class="btn-block btn-link" data-toggle="collapse" data-target="#event_{{ event.id }}">{{ event.name }} on {{ event.render_date }}</button>
                     <div id="event_{{ event.id }}" class="collapse">
-                      {{ event.get_course }}/{{ event.get_layout }}, Par {{ event.get_layout.get_par }}
+                      {{ event.cards.last.course }}/{{ event.cards.last.layout }}, Par {{ event.cards.last.layout.par }}
                     <small>
                     <table class="table table-striped text-left">
-                      <tr><th>Rank</th><th>Player</th><th>Rounds Played</th><th>HC Score</th><th>Points Earned</th>{% if event.awards.all %}<th>Awards</th>{% endif %}</tr>
-                      {% for player, stats in event.get_result.items %}
-                      <tr><td>{{ forloop.counter }}</td><td>{{ player }}</td><td>{{ stats.round_count }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.points_earned }}</td>{% if event.awards.all %}<td>{{ stats.awards }}</td>{% endif %}</tr>
+                      <tr><th>Player</th><th>Rounds Played</th><th>HC</th><th>HC Score</th><th>Points Earned</th>{% if event.awards.all %}<th>Awards</th>{% endif %}</tr>
+                      {% for contestant, stats in event.result.items %}
+                      <tr><td>{{ forloop.counter }}. {{ contestant.player }}</td><td>{{ stats.round_count }}</td><td>{{ stats.previous_handicap }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.points_earned }}</td>{% if event.awards.all %}<td>{{ stats.awards }}</td>{% endif %}</tr>
                       {% endfor %}
                     </table>
                     </small>
@@ -147,14 +147,14 @@
                     No score cards recorded.
                     {% endif %}
                     {% for card in event.cards.all %}
-                    <button class="btn-block btn-link" data-toggle="collapse" data-target="#card_{{ card.id }}">{{ card.get_date }} <small>({{ card.get_players }})</small></button>
+                    <button class="btn-block btn-link" data-toggle="collapse" data-target="#card_{{ card.id }}">{{ card.render_date }} <small>({{ card.players }})</small></button>
                     <div id="card_{{ card.id }}" class="collapse">
-                      Course: {{ card.course }}/{{ card.get_layout }} (Par {{ card.get_layout.get_par }})
+                      {{ card.course }}/{{ card.layout }} (Par {{ card.layout.par }})
                     <small>
                     <table class="table table-striped text-left">
-                      <tr><th>Player</th><th>HC</th><th>Score</th><th>+/-</th><th>HC Score</th><th>HC +/-</th></tr>
-                      {% for player, stats in card.get_result.items %}
-                      <tr><td>{{ forloop.counter }}. {{ player }}</td><td>{{ stats.handicap }}</td><td>{{ stats.scratch_score }}</td><td>{{ stats.scratch_delta }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.handicap_delta }}</td></tr>
+                      <tr><th>Position</th><th>Player</th><th>Scratch Score</th><th>+/-</th></tr>
+                      {% for contestant, stats in card.result.items %}
+                      <tr><td>{{ forloop.counter }}</td><td>{{ contestant.player }}</td><td>{{ stats.scratch_score }}</td><td>{{ stats.scratch_delta }}</td></tr>
                       {% endfor %}
                     </table>
                     </small>

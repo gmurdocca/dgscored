@@ -103,11 +103,15 @@ class Card(models.Model):
     scores = models.ManyToManyField(Score, blank=True)
 
     @property
-    def players(self):
+    def players(self, render=True):
         """
         Returns a list of Players who are competing on this card
+        Returns a string if render=True, else a list of Player objects.
         """
-        return [s.contestant for s in self.scores.all()]
+        result = [s.contestant.player.shortest_name for s in self.scores.all()]
+        if render:
+            return ", ".join(result)
+        return result
 
     def __unicode__(self):
         return "%s (%s)" % (self.date, ", ".join([str(p) for p in self.players]))
@@ -209,8 +213,8 @@ class Event(models.Model):
                     previous_handicap = previous_event.result[contestant]['handicap']
                 except KeyError:
                     previous_handicap = contestant.initial_handicap
-            event_result[contestant]['previous_handicap'] = previous_handicap
-            event_result[contestant]['handicap_score'] = event_result[contestant]['scratch_score'] - (previous_handicap * event_result[contestant]['round_count'])
+            event_result[contestant]['previous_handicap'] = int(previous_handicap)
+            event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - (previous_handicap * event_result[contestant]['round_count']))
             # calculate new handicap
             latest_five_cards = self.get_latest_cards(contestant, 5)
             # sort by scratch_delta
@@ -248,11 +252,16 @@ class League(models.Model):
 
     @property
     def result(self):
-        standings = defaultdict(int)
+        standings = OrderedDict()
         for event in self.events.all():
-            result = event.get_result()
-            for player in result:
-                standings[player] += result[player]['points_earned']
+            result = event.result
+            for contestant in result:
+                player = contestant.player
+                if not player in standings:
+                    standings[player] = defaultdict(int)
+                standings[player]['points'] += result[contestant]['points_earned']
+                standings[player]['handicap'] = int(result[contestant]['handicap'])
         # sort by rank
-        standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1], reverse=True))
+        standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1]['points'], reverse=True))
         return standings
+
