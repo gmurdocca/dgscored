@@ -1,7 +1,7 @@
-from django.db import models
 from collections import OrderedDict, defaultdict
 from dgscored import settings
-import numpy
+from django.db import models
+import math
 
 
 class Player(models.Model):
@@ -47,17 +47,9 @@ class Player(models.Model):
 class Contestant(models.Model):
     player = models.ForeignKey(Player)
     initial_handicap = models.IntegerField(default=0)
-    handicap = models.IntegerField(blank=True, null=True, default=None, editable=False)
-
-    @property
-    def handicap(self):
-        if self.handicap == None:
-            return self.initial_handicap
-        else:
-            return self.handicap
 
     def __unicode__(self):
-        return self.player.full_name
+        return "%s (%s)" % (self.player.full_name, self.league_set.get())
 
 
 class Hole(models.Model):
@@ -120,33 +112,27 @@ class Card(models.Model):
     def __unicode__(self):
         return "%s (%s)" % (self.date, ", ".join([str(p) for p in self.players]))
 
-    def get_date(self):
+    def render_date(self):
         return self.date.strftime("%a %b %d %H:%M, %Y")
 
     @property
     def result(self):
         result = OrderedDict()
         for score in self.scores.all():
-            contestant = score.contestant.player
+            contestant = score.contestant
             scratch_score = score.strokes
             scratch_delta = scratch_score - self.layout.par
-            handicap = score.contestant.handicap
-            handicap_score = scratch_score - handicap
-            handicap_delta = handicap_score - self.layout.par
             result[contestant] = {}
-            result[contestant]["handicap"] = handicap
             result[contestant]["scratch_score"] = scratch_score
             result[contestant]["scratch_delta"] = str(scratch_delta) if scratch_delta < 0 else "+%s" % scratch_delta
-            result[contestant]["handicap_score"] = handicap_score
-            result[contestant]["handicap_delta"] = handicap_delta if handicap_delta < 0 else "+%s" % handicap_delta
         # sort by rank
-        result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["handicap_score"]))
+        result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["scratch_score"]))
         return result
 
 
 class Award(models.Model):
     """
-    Generic award model, eg. Closest To Pin
+    Generic award model, eg. Closest to Pin
     """
     name = models.CharField(max_length=50, blank=True, null=True)
     contestant = models.ForeignKey(Contestant)
@@ -165,6 +151,21 @@ class Event(models.Model):
     awards = models.ManyToManyField(Award, blank=True)
     cards = models.ManyToManyField(Card, blank=True)
 
+    def get_latest_cards(self, contestant, n=1):
+        """
+        returns up to n latest score cards for contestant, sorted 
+        """
+        result = []
+        all_events = self.league_set.get().events.filter(date__lte=self.date)
+        for event in all_events:
+            cards = event.cards.all()
+            for card in cards:
+                if card.scores.filter(contestant=contestant):
+                    # this card counts
+                    result.append(card)
+        result = sorted(result, key=lambda x: x.date, reverse=True)[:n]
+        return result
+
     @property
     def render_date(self):
         return self.date.strftime("%a %b %d, %Y")
@@ -180,35 +181,57 @@ class Event(models.Model):
             return settings.LEAGUE_POINTS[-1]
         return settings.LEAGUE_POINTS[rank]
 
-    def get_result(self):
+    @property
+    def result(self):
         """
-        Returns points earned by players during this event
+        Returns points earned by contestants during this event
         """
         event_result = OrderedDict()
         # only use the first self.rounds cards
         for card in self.cards.order_by("date")[:self.rounds]:
-            result = card.get_result()
+            result = card.result
             for contestant in result:
                 stats = result[contestant]
                 event_result[contestant] = defaultdict(int)
-                event_result[contestant]['round_count'] += 1
-                event_result[contestant]['handicap_score'] += stats['handicap_score']
                 event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
-        # sort by rank
+                event_result[contestant]['round_count'] += 1
+                event_result[contestant]['scratch_score'] += stats['scratch_score']
+        for contestant in event_result:
+            # calculate handicap score
+            try:
+                previous_event = self.get_previous_by_date()
+            except self.DoesNotExist:
+                previous_event = None
+            if not previous_event:
+                previous_handicap = contestant.initial_handicap
+            else:
+                try:
+                    previous_handicap = previous_event.result[contestant]['handicap']
+                except KeyError:
+                    previous_handicap = contestant.initial_handicap
+            event_result[contestant]['previous_handicap'] = previous_handicap
+            event_result[contestant]['handicap_score'] = event_result[contestant]['scratch_score'] - (previous_handicap * event_result[contestant]['round_count'])
+            # calculate new handicap
+            latest_five_cards = self.get_latest_cards(contestant, 5)
+            # sort by scratch_delta
+            best_two_cards = sorted(latest_five_cards, key=lambda x: x.result[contestant]['scratch_delta'])[:2]
+            # calculate average:
+            best_two_scratch_deltas = [int(c.result[contestant]["scratch_delta"]) for c in best_two_cards]
+            handicap = reduce(lambda x, y: float(x) + float(y), best_two_scratch_deltas) / len(best_two_scratch_deltas)
+            # round up
+            handicap = math.ceil(handicap)
+            event_result[contestant]['handicap'] = handicap
+        # sort event_result by rank
         event_result = OrderedDict(sorted(event_result.iteritems(), key=lambda x: x[1]["handicap_score"]))
         # assign points earned
-        for player in event_result:
-            if self.rounds < event_result[player]['round_count']:
+        for contestant in event_result:
+            if self.rounds < event_result[contestant]['round_count']:
                 # player completed less than the required rounds, assign minimum possible points. 
-                event_result[player]['points_earned'] = self.get_points(-1)
+                event_result[contestant]['points_earned'] = self.get_points(-1)
             else:
-                rank = event_result.keys().index(player)
-                event_result[player]['points_earned'] = self.get_points(rank)
+                rank = event_result.keys().index(contestant)
+                event_result[contestant]['points_earned'] = self.get_points(rank)
         return event_result
-
-    def save(self, *args, **kwargs):
-        super(Event, self).save(*args, **kwargs)
-        # TODO recalculate curent handicaps from the first event using initial handicap for contestant.
 
     def __unicode__(self):
         name = self.name or "Event"
@@ -223,10 +246,8 @@ class League(models.Model):
     def __unicode__(self):
         return "%s" % self.name
 
-    def get_standings(self):
-        """
-        returns {player: {'current_handicap': x, 'total_points': y}}
-        """
+    @property
+    def result(self):
         standings = defaultdict(int)
         for event in self.events.all():
             result = event.get_result()
