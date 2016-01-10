@@ -191,7 +191,7 @@ class Event(models.Model):
         Returns points earned by contestants during this event
         """
         event_result = OrderedDict()
-        # only use the first self.rounds cards
+        # ignore any cards entered that exceed the number of rounds required for this event
         for card in self.cards.order_by("date")[:self.rounds]:
             result = card.result
             for contestant in result:
@@ -200,19 +200,22 @@ class Event(models.Model):
                 event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
                 event_result[contestant]['round_count'] += 1
                 event_result[contestant]['scratch_score'] += stats['scratch_score']
+
+            def get_previous_handicap(event, contestant):
+                try:
+                    previous_event = event.get_previous_by_date()
+                except self.DoesNotExist:
+                    return contestant.initial_handicap
+                try:
+                    return previous_event.result[contestant]['handicap']
+                except KeyError:
+                    # contestant did not compete in previous event, check the next previous
+                    return get_previous_handicap(previous_event, contestant)
         for contestant in event_result:
             # calculate handicap score
-            try:
-                previous_event = self.get_previous_by_date()
-            except self.DoesNotExist:
-                previous_event = None
-            if not previous_event:
-                previous_handicap = contestant.initial_handicap
-            else:
-                try:
-                    previous_handicap = previous_event.result[contestant]['handicap']
-                except KeyError:
-                    previous_handicap = contestant.initial_handicap
+            previous_handicap = get_previous_handicap(self, contestant)
+
+
             event_result[contestant]['previous_handicap'] = int(previous_handicap)
             event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - (previous_handicap * event_result[contestant]['round_count']))
             # calculate new handicap
