@@ -1,8 +1,15 @@
 from collections import OrderedDict, defaultdict
+from django.utils import timezone
 from dgscored import settings
 from django.db import models
 import math
+import pytz
 
+timezone.activate(pytz.timezone(settings.TIME_ZONE))
+current_tz = timezone.get_current_timezone()
+
+def normalise(date):
+    return current_tz.normalize(date)
 
 class Player(models.Model):
     first_name = models.CharField(max_length=50)
@@ -93,7 +100,7 @@ class Score(models.Model):
     date = models.DateTimeField()
 
     def __unicode__(self):
-        return "%s - %s - %s" % (self.strokes, self.date.ctime(), self.contestant.player.name)
+        return "%s - %s - %s" % (self.strokes, normalise(self.date).ctime(), self.contestant.player.name)
 
 
 class Card(models.Model):
@@ -114,10 +121,10 @@ class Card(models.Model):
         return result
 
     def __unicode__(self):
-        return "%s (%s)" % (self.date, ", ".join([str(p) for p in self.players]))
+        return "%s (%s)" % (normalise(self.date), self.players)
 
     def render_date(self):
-        return self.date.strftime("%a %b %d %H:%M, %Y")
+        return normalise(self.date).strftime("%a %b %d %H:%M, %Y")
 
     @property
     def result(self):
@@ -172,7 +179,7 @@ class Event(models.Model):
 
     @property
     def render_date(self):
-        return self.date.strftime("%a %b %d, %Y")
+        return normalise(self.date).strftime("%a %b %d, %Y")
 
     def get_points(self, rank):
         """
@@ -185,11 +192,26 @@ class Event(models.Model):
             return settings.LEAGUE_POINTS[-1]
         return settings.LEAGUE_POINTS[rank]
 
+
+    @staticmethod
+    def get_previous_handicap(event, contestant):
+        try:
+            previous_event = event.get_previous_by_date()
+        except event.DoesNotExist:
+            return contestant.initial_handicap
+        try:
+            return previous_event.result[contestant]['handicap']
+        except KeyError:
+            # contestant did not compete in previous event, check the next previous
+            return Event.get_previous_handicap(previous_event, contestant)
+
     @property
     def result(self):
         """
         Returns points earned by contestants during this event
         """
+
+
         event_result = OrderedDict()
         # ignore any cards entered that exceed the number of rounds required for this event
         for card in self.cards.order_by("date")[:self.rounds]:
@@ -200,22 +222,9 @@ class Event(models.Model):
                 event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
                 event_result[contestant]['round_count'] += 1
                 event_result[contestant]['scratch_score'] += stats['scratch_score']
-
-            def get_previous_handicap(event, contestant):
-                try:
-                    previous_event = event.get_previous_by_date()
-                except self.DoesNotExist:
-                    return contestant.initial_handicap
-                try:
-                    return previous_event.result[contestant]['handicap']
-                except KeyError:
-                    # contestant did not compete in previous event, check the next previous
-                    return get_previous_handicap(previous_event, contestant)
         for contestant in event_result:
             # calculate handicap score
-            previous_handicap = get_previous_handicap(self, contestant)
-
-
+            previous_handicap = Event.get_previous_handicap(self, contestant)
             event_result[contestant]['previous_handicap'] = int(previous_handicap)
             event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - (previous_handicap * event_result[contestant]['round_count']))
             # calculate new handicap
@@ -242,7 +251,7 @@ class Event(models.Model):
 
     def __unicode__(self):
         name = self.name or "Event"
-        return "%s - %s" % (name, self.date.ctime())
+        return "%s - %s" % (name, normalise(self.date).ctime())
 
 
 class League(models.Model):

@@ -114,9 +114,9 @@
                       {{ event.cards.last.course }}/{{ event.cards.last.layout }}, Par {{ event.cards.last.layout.par }}
                     <small>
                     <table class="table table-striped text-left">
-                      <tr><th>Player</th><th>Rounds Played</th><th>HC</th><th>HC Score</th><th>Points Earned</th>{% if event.awards.all %}<th>Awards</th>{% endif %}</tr>
+                      <tr><th>Player</th><th>Rounds Played</th><th>HC</th><th>HC Score</th><th>Points Earned</th><th>Awards</th></tr>
                       {% for contestant, stats in event.result.items %}
-                      <tr><td>{{ forloop.counter }}. {{ contestant.player }}</td><td>{{ stats.round_count }}</td><td>{{ stats.previous_handicap }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.points_earned }}</td>{% if event.awards.all %}<td>{{ stats.awards }}</td>{% endif %}</tr>
+                      <tr><td>{{ forloop.counter }}. {{ contestant.player }}</td><td>{{ stats.round_count }}</td><td>{{ stats.previous_handicap }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.points_earned }}</td><td>{{ stats.awards }}</td></tr>
                       {% endfor %}
                     </table>
                     </small>
