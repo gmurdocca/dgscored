@@ -208,10 +208,8 @@ class Event(models.Model):
     @property
     def result(self):
         """
-        Returns points earned by contestants during this event
+        Returns a per-player results dict including points earned by contestants during this event, ordered by rank.
         """
-
-
         event_result = OrderedDict()
         # ignore any cards entered that exceed the number of rounds required for this event
         for card in self.cards.order_by("date")[:self.rounds]:
