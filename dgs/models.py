@@ -192,7 +192,6 @@ class Event(models.Model):
             return settings.LEAGUE_POINTS[-1]
         return settings.LEAGUE_POINTS[rank]
 
-
     @staticmethod
     def get_previous_handicap(event, contestant):
         try:
@@ -233,7 +232,7 @@ class Event(models.Model):
             best_two_scratch_deltas = [int(c.result[contestant]["scratch_delta"]) for c in best_two_cards]
             handicap = reduce(lambda x, y: float(x) + float(y), best_two_scratch_deltas) / len(best_two_scratch_deltas)
             # round up
-            handicap = math.ceil(handicap)
+            handicap = math.ceil(handicap * settings.HANDICAP_MULTIPLIER)
             event_result[contestant]['handicap'] = handicap
         # sort event_result by rank
         event_result = OrderedDict(sorted(event_result.iteritems(), key=lambda x: x[1]["handicap_score"]))
@@ -256,6 +255,7 @@ class League(models.Model):
     name = models.CharField(max_length=50)
     contentants = models.ManyToManyField(Contestant, blank=True)
     events = models.ManyToManyField(Event, blank=True)
+    min_rounds = settings.HANDICAP_MIN_ROUNDS
 
     def __unicode__(self):
         return "%s" % self.name
@@ -271,6 +271,8 @@ class League(models.Model):
                     standings[player] = defaultdict(int)
                 standings[player]['points'] += result[contestant]['points_earned']
                 standings[player]['handicap'] = int(result[contestant]['handicap'])
+                standings[player]['events_attended'] += 1 
+                standings[player]['rounds_played'] += len([c.scores.filter(contestant=contestant).count() for c in event.cards.all()])
         # sort by rank
         standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1]['points'], reverse=True))
         return standings

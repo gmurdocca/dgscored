@@ -82,13 +82,21 @@
                     {% for league in leagues  %}
                     <hr>
                     <h4 style="color: rgb(67, 196, 67)">{{ league.name }}</h4>
+                    {% if not league.events.all %}
+                    No events recorded.
+                    {% else %}
                     <h5>League events to date: {{ league.events.count }}</h5>
                     <table class="table table-striped text-left">
-                      <tr><th>Position</th><th>Player</th><th>Current Handicap</th><th>Total Points</th></tr>
+                      <tr><th>Position</th><th>Player</th><th>Events Played</th><th>Current Handicap</th><th>Total Points</th></tr>
                       {% for player, stats in league.result.items %}
-                      <tr><td>{{ forloop.counter }}</td><td>{{ player }}</td><td>{{ stats.handicap }}</td><td>{{ stats.points }}</td></tr>
+                      {% if stats.rounds_played == 1 %}
+                      <tr><td><span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="Minimum {{ league.min_rounds }} rounds must be played for ranking" style="cursor: pointer; color: #18BC9C;"></span></td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>-</td><td>-</td></tr>
+                      {% else %}
+                      <tr><td>{{ forloop.counter }}</td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>{{ stats.handicap }}</td><td>{{ stats.points }}</td></tr>
+                      {% endif %}
                       {% endfor %}
                     </table>
+                    {% endif %}
                     {% endfor %}
                     <!-- <a class="btn btn-default page-scroll" href="#leagues">Leagues</a> -->
                 </div>
@@ -116,7 +124,7 @@
                     <table class="table table-striped text-left">
                       <tr><th>Player</th><th>Rounds Played</th><th>HC</th><th>HC Score</th><th>Points Earned</th><th>Awards</th></tr>
                       {% for contestant, stats in event.result.items %}
-                      <tr><td>{{ forloop.counter }}. {{ contestant.player }}</td><td>{{ stats.round_count }}/{{ event.rounds }}</td><td>{{ stats.previous_handicap }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.points_earned }}</td><td>{{ stats.awards }}</td></tr>
+                      <tr><td>{{ forloop.counter }}. {{ contestant.player }}</td><td>{{ stats.round_count }} of {{ event.rounds }}</td><td>{{ stats.previous_handicap }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.points_earned }}</td><td>{{ stats.awards }}</td></tr>
                       {% endfor %}
                     </table>
                     </small>
@@ -193,6 +201,18 @@
     <!-- Scrolling Nav JavaScript -->
     <script src="/static/js/jquery.easing.min.js"></script>
     <script src="/static/js/scrolling-nav.js"></script>
+
+    <script>
+    $(document).ready(function(){
+        $('[data-toggle="popover"]').popover();
+    });
+
+    $('.pop').popover().click(function () {
+        setTimeout(function () {
+            $('.pop').popover('hide');
+        }, 3000);
+    });
+    </script>
 
 </body>
 
