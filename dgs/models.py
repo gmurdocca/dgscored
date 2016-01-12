@@ -2,7 +2,6 @@ from collections import OrderedDict, defaultdict
 from django.utils import timezone
 from dgscored import settings
 from django.db import models
-import math
 import pytz
 
 timezone.activate(pytz.timezone(settings.TIME_ZONE))
@@ -53,7 +52,7 @@ class Player(models.Model):
 
 class Contestant(models.Model):
     player = models.ForeignKey(Player)
-    initial_handicap = models.IntegerField(default=0)
+    initial_handicap = models.IntegerField(blank=True, null=True, default=None)
 
     def __unicode__(self):
         return "%s (%s)" % (self.player.full_name, self.league_set.get())
@@ -210,35 +209,46 @@ class Event(models.Model):
         Returns a per-player results dict including points earned by contestants during this event, ordered by rank.
         """
         event_result = OrderedDict()
-        # ignore any cards entered that exceed the number of rounds required for this event
-        for card in self.cards.order_by("date")[:self.rounds]:
+        for card in self.cards.order_by("date"):
             result = card.result
             for contestant in result:
                 stats = result[contestant]
                 event_result[contestant] = defaultdict(int)
                 event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
                 event_result[contestant]['round_count'] += 1
-                event_result[contestant]['scratch_score'] += stats['scratch_score']
+                # only count a scratch score if the contestant has not exceeded the max number of rounds required in this event.
+                if event_result[contestant]['round_count'] <= self.rounds:
+                    event_result[contestant]['scratch_score'] += stats['scratch_score']
         for contestant in event_result:
             # calculate handicap score
             previous_handicap = Event.get_previous_handicap(self, contestant)
-            event_result[contestant]['previous_handicap'] = int(previous_handicap)
-            event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - (previous_handicap * event_result[contestant]['round_count']))
+            event_result[contestant]['previous_handicap'] = None if previous_handicap == None else int(previous_handicap)
+            if previous_handicap == None:
+                event_result[contestant]['handicap_score'] = None
+            else:
+                event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - (previous_handicap * event_result[contestant]['round_count']))
             # calculate new handicap
-            latest_five_cards = self.get_latest_cards(contestant, 5)
+            latest_max_cards = self.get_latest_cards(contestant, settings.HANDICAP_MAX_ROUNDS)
             # sort by scratch_delta
-            best_two_cards = sorted(latest_five_cards, key=lambda x: x.result[contestant]['scratch_delta'])[:2]
+            best_min_cards = sorted(latest_max_cards, key=lambda x: x.result[contestant]['scratch_delta'])[:settings.HANDICAP_MIN_ROUNDS]
             # calculate average:
-            best_two_scratch_deltas = [int(c.result[contestant]["scratch_delta"]) for c in best_two_cards]
-            handicap = reduce(lambda x, y: float(x) + float(y), best_two_scratch_deltas) / len(best_two_scratch_deltas)
-            # round up
-            handicap = math.ceil(handicap * settings.HANDICAP_MULTIPLIER)
+            best_scratch_deltas = [int(c.result[contestant]["scratch_delta"]) for c in best_min_cards]
+            handicap = reduce(lambda x, y: float(x) + float(y), best_scratch_deltas) / len(best_scratch_deltas)
+            # round to nearest integer
+            handicap = int(round(handicap * settings.HANDICAP_MULTIPLIER))
             event_result[contestant]['handicap'] = handicap
+            # inject the handicap into the contestant's initial handicap value if they played the required number of rounds
+            total_rounds = sum([sum([c.scores.filter(contestant=contestant).count() for c in e.cards.all()]) for e in self.league_set.last().events.all()])
+            if total_rounds == settings.HANDICAP_MIN_ROUNDS:
+                contestant.initial_handicap = handicap
+                contestant.save()
         # sort event_result by rank
         event_result = OrderedDict(sorted(event_result.iteritems(), key=lambda x: x[1]["handicap_score"]))
         # assign points earned
         for contestant in event_result:
-            if self.rounds < event_result[contestant]['round_count']:
+            if event_result[contestant]['handicap_score'] == None:
+                event_result[contestant]['points_earned'] = None
+            elif self.rounds < event_result[contestant]['round_count']:
                 # player completed less than the required rounds, assign minimum possible points. 
                 event_result[contestant]['points_earned'] = self.get_points(-1)
             else:

@@ -1,5 +1,4 @@
 decorator==4.0.6
--e git+https://github.com/gmurdocca/dgscored.git@b047e6dd4643e529c63ff70180f99b25940668d1#egg=dgscored-master
 Django==1.9.1
 ipython==4.0.1
 ipython-genutils==0.1.0
