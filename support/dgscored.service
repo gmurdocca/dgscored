@@ -1,0 +1,14 @@
+[Unit]
+Description=Manages the DGScored server
+After=syslog.target
+
+[Service]
+ExecStart=/opt/dgscored/bin/uwsgi --pythonpath /opt/dgscored/lib/python2.7/site-packages/ -w dgscored.wsgi:application --uwsgi-socket 127.0.0.1:31338 --enable-threads --threads 20 --uid dgscored --gid dgscored
+Restart=always
+Type=notify
+StandardError=syslog
+NotifyAccess=main
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

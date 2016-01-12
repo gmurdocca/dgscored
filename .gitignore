@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.swp
+*~
 
 # C extensions
 *.so
@@ -56,3 +57,13 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# RPM build files
+/RPMS
+/BUILDROOT
+
+# Virtual environments
+.env
+
+# Compiled Django assets
+*/collected_static/*
