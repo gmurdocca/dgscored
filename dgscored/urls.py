@@ -1,7 +1,7 @@
 from django.conf.urls import patterns, include, url
 from django.views.generic.base import RedirectView
 from django.contrib import admin
-import dgs
+import dgs.views
 
 admin.autodiscover()
 
@@ -10,5 +10,5 @@ urlpatterns = patterns('',
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
     url(r'^favicon\.ico$', RedirectView.as_view(url='/static/favicon.ico')),
     url(r'^admin/', include(admin.site.urls)),
-    url(r'^$', 'dgs.views.home', name='home'),
+    url(r'^$', dgs.views.home, name='home'),
 )
