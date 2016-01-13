@@ -1,0 +1,2 @@
+recursive-include dgs/static *
+recursive-include dgscored/templates *
