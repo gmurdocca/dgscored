@@ -244,10 +244,13 @@ class Event(models.Model):
             if total_rounds == settings.HANDICAP_MIN_ROUNDS:
                 contestant.initial_handicap = handicap
                 contestant.save()
+
         # sort event_result by players who completed all required rounds, then by handicap score, then by scratch score
+        # group first
         result = {}
         incomplete_result = {}
         no_hc_result = {}
+        # sort groups
         for contestant in event_result:
             if event_result[contestant]["handicap_score"] == None:
                 no_hc_result[contestant] = event_result[contestant]
@@ -258,9 +261,17 @@ class Event(models.Model):
         result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["handicap_score"]))
         incomplete_result = OrderedDict(sorted(incomplete_result.iteritems(), key=lambda x: x[1]["handicap_score"]))
         no_hc_result = OrderedDict(sorted(no_hc_result.iteritems(), key=lambda x: x[1]["scratch_score"]))
+        # aggregate into a single result dict
         incomplete_result.update(no_hc_result)
         result.update(incomplete_result)
         event_result = result
+        # add rank data
+        rank = 0
+        for contestant in event_result:
+            index = event_result.keys().index(contestant)
+            if index > 0 and (event_result[event_result.keys()[index - 1]]['handicap_score'] != (event_result[contestant]['handicap_score'] or 0)):
+                rank = index
+            event_result[contestant]['rank'] = rank + 1
         # assign points earned
         for contestant in event_result:
             if event_result[contestant]['handicap_score'] == None:
@@ -269,8 +280,7 @@ class Event(models.Model):
                 # player completed less than the required rounds, assign minimum possible points. 
                 event_result[contestant]['points_earned'] = self.get_points(-1)
             else:
-                rank = event_result.keys().index(contestant)
-                event_result[contestant]['points_earned'] = self.get_points(rank)
+                event_result[contestant]['points_earned'] = self.get_points(event_result[contestant]["rank"] - 1)
         return event_result
 
     def __unicode__(self):
@@ -307,7 +317,15 @@ class League(models.Model):
                 standings[player]['valid_hc'] = False
             else:
                 standings[player]['valid_hc'] = True
+
+        # add rank data
+        rank = 0
+        for player in standings:
+            index = standings.keys().index(player)
+            if index > 0 and (standings[standings.keys()[index - 1]]['points'] != standings[player]['points']):
+                rank = index
+            standings[player]['rank'] = rank + 1
         # sort by rank
-        standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1]['points'], reverse=True))
+        standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1]['rank']))
         return standings
 
