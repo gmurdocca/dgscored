@@ -319,6 +319,7 @@ class League(models.Model):
                 standings[player]['valid_hc'] = True
 
         # add rank data
+        standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1]['points'], reverse=True))
         rank = 0
         for player in standings:
             index = standings.keys().index(player)
