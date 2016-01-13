@@ -39,10 +39,10 @@ class Player(models.Model):
         if len(same_first_names) == 1:
             return self.first_name
         else:
-            same_last_name_initial = {}
+            same_last_name_initial = defaultdict(int)
             for player in same_first_names:
-                same_last_name_initial[player.last_name_initial] = player
-            if len(same_last_name_initial[self.last_name_initial]) == 1:
+                same_last_name_initial[player.last_name_initial] += 1
+            if same_last_name_initial[self.last_name_initial] == 1:
                 return "%s %s" % (self.first_name, self.last_name_initial)
         return self.full_name
 
@@ -55,7 +55,7 @@ class Contestant(models.Model):
     initial_handicap = models.IntegerField(blank=True, null=True, default=None)
 
     def __unicode__(self):
-        return "%s (%s)" % (self.player.full_name, self.league_set.get())
+        return "%s (%s)" % (self.player.full_name, self.league_set.all() and self.league_set.get() or "None")
 
 
 class Hole(models.Model):
@@ -187,7 +187,7 @@ class Event(models.Model):
         did not complete Event.rounds rounds, then they earned minimum points for
         attendance, eg one point.
         """
-        if 0 > rank > len(settings.LEAGUE_POINTS):
+        if 0 > rank or rank >= len(settings.LEAGUE_POINTS):
             return settings.LEAGUE_POINTS[-1]
         return settings.LEAGUE_POINTS[rank]
 

@@ -89,7 +89,7 @@
                     <table class="table table-striped text-left">
                       <tr><th>Position</th><th>Player</th><th>Events Played</th><th>Current Handicap</th><th>Total Points</th></tr>
                       {% for player, stats in league.result.items %}
-                      {% if stats.rounds_played == 1 %}
+                      {% if stats.rounds_played == 1 and not stats.handicap %}
                       <tr><td><span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="Minimum {{ league.min_rounds }} rounds must be played for ranking" style="cursor: pointer; color: #18BC9C;"></span></td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>-</td><td>-</td></tr>
                       {% else %}
                       <tr><td>{{ forloop.counter }}</td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>{{ stats.handicap }}</td><td>{{ stats.points }}</td></tr>
