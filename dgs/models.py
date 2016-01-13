@@ -208,7 +208,7 @@ class Event(models.Model):
         """
         Returns a per-player results dict including points earned by contestants during this event, ordered by rank.
         """
-        event_result = OrderedDict()
+        event_result = {}
         for card in self.cards.order_by("date"):
             result = card.result
             for contestant in result:
@@ -242,8 +242,20 @@ class Event(models.Model):
             if total_rounds == settings.HANDICAP_MIN_ROUNDS:
                 contestant.initial_handicap = handicap
                 contestant.save()
-        # sort event_result by rank
-        event_result = OrderedDict(sorted(event_result.iteritems(), key=lambda x: x[1]["handicap_score"]))
+        # sort event_result by handicap score, then by scratch score
+        result = {}
+        no_hc_result = {}
+        for contestant in event_result:
+            if event_result[contestant]["handicap_score"] == None:
+                no_hc_result[contestant] = event_result[contestant]
+            else:
+                result[contestant] = event_result[contestant]
+        print result
+        print no_hc_result
+        result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["handicap_score"]))
+        no_hc_result = OrderedDict(sorted(no_hc_result.iteritems(), key=lambda x: x[1]["scratch_score"]))
+        result.update(no_hc_result)
+        event_result = result
         # assign points earned
         for contestant in event_result:
             if event_result[contestant]['handicap_score'] == None:
@@ -279,7 +291,7 @@ class League(models.Model):
                 player = contestant.player
                 if not player in standings:
                     standings[player] = defaultdict(int)
-                standings[player]['points'] += result[contestant]['points_earned']
+                standings[player]['points'] += result[contestant]['points_earned'] or 0
                 standings[player]['handicap'] = int(result[contestant]['handicap'])
                 standings[player]['events_attended'] += 1 
                 standings[player]['rounds_played'] += len([c.scores.filter(contestant=contestant).count() for c in event.cards.all()])

@@ -119,12 +119,12 @@
                     {% for event in league.events.all %}
                     <button class="btn-block btn-link" data-toggle="collapse" data-target="#event_{{ event.id }}">{{ event.name }} on {{ event.render_date }}</button>
                     <div id="event_{{ event.id }}" class="collapse">
-                      {{ event.cards.last.course }}/{{ event.cards.last.layout }}, Par {{ event.cards.last.layout.par }}
+                      {{ event.cards.last.course }}/{{ event.cards.last.layout }} Layout, Par {{ event.cards.last.layout.par }}
                     <small>
                     <table class="table table-striped text-left">
                       <tr><th>Player</th><th>Rounds Played</th><th>HC</th><th>HC Score</th><th>Points Earned</th><th>Awards</th></tr>
                       {% for contestant, stats in event.result.items %}
-                      <tr><td>{{ forloop.counter }}. {{ contestant.player }}</td><td>{{ stats.round_count }} of {{ event.rounds }}</td><td>{{ stats.previous_handicap }}</td><td>{{ stats.handicap_score }}</td><td>{{ stats.points_earned }}</td><td>{{ stats.awards }}</td></tr>
+                      <tr><td>{% if stats.points_earned %}{{ forloop.counter }}.{% else %}<span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="Minimum {{ league.min_rounds }} rounds must be played for ranking" style="cursor: pointer; color: #18BC9C;"></span>{% endif %} {{ contestant.player }}</td><td>{{ stats.round_count }} of {{ event.rounds }}</td><td>{% if stats.previous_handicap %}{{ stats.previous_handicap }}{% else %}-{% endif %}</td><td>{% if stats.handicap_score %}{{ stats.handicap_score }}{% else %}-{% endif %}</td><td>{% if stats.points_earned %}{{ stats.points_earned }}{% else %}-{% endif %}</td><td>{% if stats.awards %}{{ stats.awards }}{% else %}-{% endif %}</td></tr>
                       {% endfor %}
                     </table>
                     </small>
