@@ -213,9 +213,11 @@ class Event(models.Model):
             result = card.result
             for contestant in result:
                 stats = result[contestant]
-                event_result[contestant] = defaultdict(int)
+                if not contestant in event_result:
+                    event_result[contestant] = defaultdict(int)
                 event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
                 event_result[contestant]['round_count'] += 1
+                event_result[contestant]['completed_event'] = event_result[contestant]['round_count'] >= settings.HANDICAP_MIN_ROUNDS
                 # only count a scratch score if the contestant has not exceeded the max number of rounds required in this event.
                 if event_result[contestant]['round_count'] <= self.rounds:
                     event_result[contestant]['scratch_score'] += stats['scratch_score']
@@ -242,25 +244,28 @@ class Event(models.Model):
             if total_rounds == settings.HANDICAP_MIN_ROUNDS:
                 contestant.initial_handicap = handicap
                 contestant.save()
-        # sort event_result by handicap score, then by scratch score
+        # sort event_result by players who completed all required rounds, then by handicap score, then by scratch score
         result = {}
+        incomplete_result = {}
         no_hc_result = {}
         for contestant in event_result:
             if event_result[contestant]["handicap_score"] == None:
                 no_hc_result[contestant] = event_result[contestant]
+            elif not event_result[contestant]['completed_event']:
+                incomplete_result[contestant] = event_result[contestant]
             else:
                 result[contestant] = event_result[contestant]
-        print result
-        print no_hc_result
         result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["handicap_score"]))
+        incomplete_result = OrderedDict(sorted(incomplete_result.iteritems(), key=lambda x: x[1]["handicap_score"]))
         no_hc_result = OrderedDict(sorted(no_hc_result.iteritems(), key=lambda x: x[1]["scratch_score"]))
-        result.update(no_hc_result)
+        incomplete_result.update(no_hc_result)
+        result.update(incomplete_result)
         event_result = result
         # assign points earned
         for contestant in event_result:
             if event_result[contestant]['handicap_score'] == None:
                 event_result[contestant]['points_earned'] = None
-            elif self.rounds < event_result[contestant]['round_count']:
+            elif event_result[contestant]['round_count'] < self.rounds:
                 # player completed less than the required rounds, assign minimum possible points. 
                 event_result[contestant]['points_earned'] = self.get_points(-1)
             else:
@@ -291,10 +296,17 @@ class League(models.Model):
                 player = contestant.player
                 if not player in standings:
                     standings[player] = defaultdict(int)
+                standings[player]['initial_handicap'] = contestant.initial_handicap
                 standings[player]['points'] += result[contestant]['points_earned'] or 0
                 standings[player]['handicap'] = int(result[contestant]['handicap'])
                 standings[player]['events_attended'] += 1 
-                standings[player]['rounds_played'] += len([c.scores.filter(contestant=contestant).count() for c in event.cards.all()])
+                standings[player]['rounds_played'] += sum([c.scores.filter(contestant=contestant).count() for c in event.cards.all()])
+        # flag playeres who have not completed enough rounds to be ranked
+        for player in standings:
+            if standings[player]['initial_handicap'] == None and standings[player]['rounds_played'] < settings.HANDICAP_MIN_ROUNDS:
+                standings[player]['valid_hc'] = False
+            else:
+                standings[player]['valid_hc'] = True
         # sort by rank
         standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1]['points'], reverse=True))
         return standings
