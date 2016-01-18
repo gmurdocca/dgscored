@@ -198,21 +198,26 @@ class Event(models.Model):
         except event.DoesNotExist:
             return contestant.initial_handicap
         try:
-            return previous_event.result[contestant]['handicap']
+            return previous_event.get_result(for_contestant=contestant)[contestant]['handicap']
         except KeyError:
             # contestant did not compete in previous event, check the next previous
             return Event.get_previous_handicap(previous_event, contestant)
 
     @property
     def result(self):
+        return self.get_result()
+
+    def get_result(self, for_contestant=None):
         """
         Returns a per-player results dict including points earned by contestants during this event, ordered by rank.
+        Returns result for specified for_contestant or all if None.
         """
         event_result = {}
-        for card in self.cards.order_by("date"):
-            result = card.result
-            for contestant in result:
-                stats = result[contestant]
+        for card in self.cards.all():
+            card_result = card.result
+            for contestant in card_result:
+                if for_contestant and contestant != for_contestant:
+                    continue
                 if not contestant in event_result:
                     event_result[contestant] = defaultdict(int)
                 event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
@@ -220,7 +225,7 @@ class Event(models.Model):
                 event_result[contestant]['completed_event'] = event_result[contestant]['round_count'] >= settings.HANDICAP_MIN_ROUNDS
                 # only count a scratch score if the contestant has not exceeded the max number of rounds required in this event.
                 if event_result[contestant]['round_count'] <= self.rounds:
-                    event_result[contestant]['scratch_score'] += stats['scratch_score']
+                    event_result[contestant]['scratch_score'] += card_result[contestant]['scratch_score']
         for contestant in event_result:
             # calculate handicap score
             previous_handicap = Event.get_previous_handicap(self, contestant)
