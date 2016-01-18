@@ -81,7 +81,8 @@
                     <h1>Current Standings</h1>
                     {% for league in leagues  %}
                     <hr>
-                    <h4 style="color: rgb(67, 196, 67)">{{ league.name }}</h4>
+                    <h4 style="color: rgb(67, 196, 67)"><button class="btn-block btn-link" data-toggle="collapse" data-target="#league_{{ league.id }}">{{ league.name }}</button></h4>
+                    <div id="league_{{ league.id }}" class="collapse">
                     {% if not league.events.all %}
                     No events recorded.
                     {% else %}
@@ -97,6 +98,7 @@
                       {% endfor %}
                     </table>
                     {% endif %}
+                    </div>
                     {% endfor %}
                     <!-- <a class="btn btn-default page-scroll" href="#leagues">Leagues</a> -->
                 </div>

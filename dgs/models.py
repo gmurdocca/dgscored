@@ -134,7 +134,7 @@ class Card(models.Model):
             scratch_delta = scratch_score - self.layout.par
             result[contestant] = {}
             result[contestant]["scratch_score"] = scratch_score
-            result[contestant]["scratch_delta"] = str(scratch_delta) if scratch_delta < 0 else "+%s" % scratch_delta
+            result[contestant]["scratch_delta"] = str(scratch_delta) if scratch_delta < 1 else "+%s" % scratch_delta
         # sort by rank
         result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["scratch_score"]))
         return result
@@ -246,7 +246,7 @@ class Event(models.Model):
             event_result[contestant]['handicap'] = handicap
             # inject the handicap into the contestant's initial handicap value if they played the required number of rounds
             total_rounds = sum([sum([c.scores.filter(contestant=contestant).count() for c in e.cards.all()]) for e in self.league_set.last().events.all()])
-            if total_rounds == settings.HANDICAP_MIN_ROUNDS:
+            if contestant.initial_handicap == None and total_rounds == settings.HANDICAP_MIN_ROUNDS:
                 contestant.initial_handicap = handicap
                 contestant.save()
 
