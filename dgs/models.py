@@ -95,7 +95,7 @@ class Score(models.Model):
     Model for overall scratch score for a player on a card after their round
     """
     contestant = models.ForeignKey(Contestant)
-    strokes = models.IntegerField()
+    strokes = models.IntegerField(blank=True, null=True)
     date = models.DateTimeField()
 
     def __unicode__(self):
@@ -131,13 +131,25 @@ class Card(models.Model):
         for score in self.scores.all():
             contestant = score.contestant
             scratch_score = score.strokes
-            scratch_delta = scratch_score - self.layout.par
             result[contestant] = {}
-            result[contestant]["scratch_score"] = scratch_score
-            result[contestant]["scratch_delta"] = str(scratch_delta) if scratch_delta < 1 else "+%s" % scratch_delta
+            if scratch_score == None:
+                result[contestant]["scratch_score"] = "DNF"
+                result[contestant]["scratch_delta"] = "-"
+            else:
+                scratch_delta = scratch_score - self.layout.par
+                result[contestant]["scratch_score"] = scratch_score
+                result[contestant]["scratch_delta"] = str(scratch_delta) if scratch_delta < 1 else "+%s" % scratch_delta
         # sort by rank
         result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["scratch_score"]))
         return result
+
+    def completed(self, contestant):
+        if contestant not in [s.contestant for s in self.scores.all()]:
+            return None
+        dnf_contestants = [s.contestant for s in self.scores.filter(strokes=None)]
+        if contestant in dnf_contestants:
+            return False
+        return True
 
 
 class Award(models.Model):
@@ -171,8 +183,9 @@ class Event(models.Model):
             cards = event.cards.all()
             for card in cards:
                 if card.scores.filter(contestant=contestant):
-                    # this card counts
-                    result.append(card)
+                    if card.completed(contestant):
+                        # this card counts
+                        result.append(card)
         result = sorted(result, key=lambda x: x.date, reverse=True)[:n]
         return result
 
@@ -221,34 +234,40 @@ class Event(models.Model):
                 if not contestant in event_result:
                     event_result[contestant] = defaultdict(int)
                 event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
-                event_result[contestant]['round_count'] += 1
-                event_result[contestant]['completed_event'] = event_result[contestant]['round_count'] >= settings.HANDICAP_MIN_ROUNDS
+                if card.completed(contestant):
+                    event_result[contestant]['round_count'] += 1
+                event_result[contestant]['completed_event'] = event_result[contestant]['round_count'] >= self.rounds 
                 # only count a scratch score if the contestant has not exceeded the max number of rounds required in this event.
-                if event_result[contestant]['round_count'] <= self.rounds:
+                if event_result[contestant]['round_count'] <= self.rounds and card_result[contestant]['scratch_score'] != "DNF":
                     event_result[contestant]['scratch_score'] += card_result[contestant]['scratch_score']
         for contestant in event_result:
             # calculate handicap score
             previous_handicap = Event.get_previous_handicap(self, contestant)
-            event_result[contestant]['previous_handicap'] = None if previous_handicap == None else int(previous_handicap)
             if previous_handicap == None:
+                event_result[contestant]['previous_handicap'] = None
                 event_result[contestant]['handicap_score'] = None
             else:
-                event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - (previous_handicap * event_result[contestant]['round_count']))
+                event_result[contestant]['previous_handicap'] = previous_handicap
+                event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - \
+                        (round(previous_handicap) * event_result[contestant]['round_count']))
             # calculate new handicap
             latest_max_cards = self.get_latest_cards(contestant, settings.HANDICAP_MAX_ROUNDS)
             # sort by scratch_delta
             best_min_cards = sorted(latest_max_cards, key=lambda x: x.result[contestant]['scratch_delta'])[:settings.HANDICAP_MIN_ROUNDS]
             # calculate average:
             best_scratch_deltas = [int(c.result[contestant]["scratch_delta"]) for c in best_min_cards]
-            handicap = reduce(lambda x, y: float(x) + float(y), best_scratch_deltas) / len(best_scratch_deltas)
-            # round to nearest integer
-            handicap = int(round(handicap * settings.HANDICAP_MULTIPLIER))
-            event_result[contestant]['handicap'] = handicap
-            # inject the handicap into the contestant's initial handicap value if they played the required number of rounds
-            total_rounds = sum([sum([c.scores.filter(contestant=contestant).count() for c in e.cards.all()]) for e in self.league_set.last().events.all()])
-            if contestant.initial_handicap == None and total_rounds == settings.HANDICAP_MIN_ROUNDS:
-                contestant.initial_handicap = handicap
-                contestant.save()
+            if not best_scratch_deltas:
+                event_result[contestant]['handicap'] = previous_handicap
+            else:
+                handicap = reduce(lambda x, y: float(x) + float(y), best_scratch_deltas) / len(best_scratch_deltas)
+                # round to 2 decimal places
+                handicap = round(handicap * settings.HANDICAP_MULTIPLIER, 2)
+                event_result[contestant]['handicap'] = handicap
+                # inject the handicap into the contestant's initial handicap value if they played the required number of rounds
+                total_rounds = sum([sum([c.scores.filter(contestant=contestant).count() for c in e.cards.all()]) for e in self.league_set.last().events.all()])
+                if contestant.initial_handicap == None and total_rounds == settings.HANDICAP_MIN_ROUNDS:
+                    contestant.initial_handicap = handicap
+                    contestant.save()
 
         # sort event_result by players who completed all required rounds, then by handicap score, then by scratch score
         # group first
@@ -313,7 +332,7 @@ class League(models.Model):
                     standings[player] = defaultdict(int)
                 standings[player]['initial_handicap'] = contestant.initial_handicap
                 standings[player]['points'] += result[contestant]['points_earned'] or 0
-                standings[player]['handicap'] = int(result[contestant]['handicap'])
+                standings[player]['handicap'] = result[contestant]['handicap']
                 standings[player]['events_attended'] += 1 
                 standings[player]['rounds_played'] += sum([c.scores.filter(contestant=contestant).count() for c in event.cards.all()])
         # flag playeres who have not completed enough rounds to be ranked

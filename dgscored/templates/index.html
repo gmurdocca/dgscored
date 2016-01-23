@@ -91,7 +91,7 @@
                       <tr><th>Rank</th><th>Player</th><th>Events Attended</th><th>Current Handicap</th><th>Total Points</th></tr>
                       {% for player, stats in league.result.items %}
                       {% if not stats.valid_hc %}
-                      <tr><td><span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="Minimum {{ league.min_rounds }} rounds must be played for ranking" style="cursor: pointer; color: #18BC9C;"></span></td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>-</td><td>-</td></tr>
+                      <tr><td><span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="HC required for rank (Must play {{ league.min_rounds }} rounds)." style="cursor: pointer; color: #18BC9C;"></span></td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>-</td><td>-</td></tr>
                       {% else %}
                       <tr><td>{{ stats.rank }}</td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>{{ stats.handicap }}</td><td>{{ stats.points }}</td></tr>
                       {% endif %}
@@ -124,9 +124,31 @@
                       {{ event.cards.last.course }}/{{ event.cards.last.layout }} Layout, Par {{ event.cards.last.layout.par }}
                     <small>
                     <table class="table table-striped text-left">
-                      <tr><th>Rank</th><th>Player</th><th>Rounds Played</th><th>HC</th><th>HC Score</th><th>Points Earned</th><th>Awards</th></tr>
-                      {% for contestant, stats in event.result.items %}
-                      <tr><td>{% if stats.points_earned %}{{ stats.rank }}{% else %}<span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="Minimum {{ league.min_rounds }} rounds must be played for ranking" style="cursor: pointer; color: #18BC9C;"></span>{% endif %}</td><td>{{ contestant.player }}</td><td>{{ stats.round_count }} of {{ event.rounds }}</td><td>{% if stats.previous_handicap != None %}{{ stats.previous_handicap }}{% else %}-{% endif %}</td><td>{% if stats.handicap_score != None %}{{ stats.handicap_score }}{% else %}-{% endif %}</td><td>{% if stats.points_earned != None %}{{ stats.points_earned }}{% else %}-{% endif %}</td><td>{% if stats.awards %}{{ stats.awards }}{% else %}-{% endif %}</td></tr>
+                      <tr>
+                        <th>Rank</th><th>Player</th><th>Rounds Played</th><th>HC</th><th>HC Score</th><th>Points Earned</th><th>Awards</th></tr>
+                        {% for contestant, stats in event.result.items %}
+                        <tr>
+                          <td>
+                            {% if stats.points_earned %}
+                              {{ stats.rank }}
+                            {% else %}
+                              <span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="HC required for rank (Must play {{ league.min_rounds }} rounds)." style="cursor: pointer; color: #18BC9C;">
+                              </span>
+                            {% endif %}
+                          </td>
+                          <td>{{ contestant.player }}</td>
+                          <td>{{ stats.round_count }} of {{ event.rounds }}</td>
+                          <td>{% if stats.previous_handicap != None %}{{ stats.previous_handicap }}{% else %}-{% endif %}</td>
+                          <td>
+                            {% if stats.handicap_score == None or stats.handicap_score == 0 %}
+                              -
+                            {% else %}
+                              {{ stats.handicap_score }}
+                            {% endif %}
+                          </td>
+                          <td>{% if stats.points_earned != None %}{{ stats.points_earned }}{% else %}-{% endif %}</td>
+                          <td>{% if stats.awards %}{{ stats.awards }}{% else %}-{% endif %}</td>
+                        </tr>
                       {% endfor %}
                     </table>
                     </small>
