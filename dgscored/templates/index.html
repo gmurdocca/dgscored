@@ -125,7 +125,7 @@
                     <small>
                     <table class="table table-striped text-left">
                       <tr>
-                        <th>Rank</th><th>Player</th><th>Rounds Played</th><th>HC</th><th>HC Score</th><th>Points Earned</th><th>Awards</th></tr>
+                        <th>Rank</th><th>Player</th><th>Rounds Completed</th><th>HC</th><th>HC Score</th><th>Points Earned</th><th>Awards</th></tr>
                         {% for contestant, stats in event.result.items %}
                         <tr>
                           <td>
@@ -236,6 +236,10 @@
         setTimeout(function () {
             $('.pop').popover('hide');
         }, 2000);
+    });
+
+    $('.btn-link').on('click', function () {
+        $('.collapse').collapse('hide');
     });
     </script>
 

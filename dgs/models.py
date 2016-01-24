@@ -283,7 +283,7 @@ class Event(models.Model):
             else:
                 result[contestant] = event_result[contestant]
         result = OrderedDict(sorted(result.iteritems(), key=lambda x: x[1]["handicap_score"]))
-        incomplete_result = OrderedDict(sorted(incomplete_result.iteritems(), key=lambda x: x[1]["handicap_score"]))
+        incomplete_result = OrderedDict(sorted(incomplete_result.iteritems(), key=lambda x: (-x[1]["round_count"], x[1]["handicap_score"])))
         no_hc_result = OrderedDict(sorted(no_hc_result.iteritems(), key=lambda x: x[1]["scratch_score"]))
         # aggregate into a single result dict
         incomplete_result.update(no_hc_result)
