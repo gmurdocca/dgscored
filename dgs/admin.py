@@ -16,5 +16,5 @@ from dgs.models import *
 @admin.register(Score)
 class ModelAdmin(admin.ModelAdmin):
     formfield_overrides = {
-        models.ManyToManyField: {'widget': FilteredSelectMultiple("", False)}
+        models.ManyToManyField: {'widget': FilteredSelectMultiple( "items", False)}
         }

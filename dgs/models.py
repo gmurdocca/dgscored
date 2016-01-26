@@ -63,7 +63,7 @@ class Hole(models.Model):
     par = models.IntegerField(default=3)
 
     def __unicode__(self):
-        return "Hole %s (Par %s) - %s" % (self.number, self.par, self.layout_set.all())
+        return "Hole %s (Par %s)%s" % (self.number, self.par, self.layout_set.all() and " - %s" % self.layout_set.get() or "")
 
 
 class Layout(models.Model):

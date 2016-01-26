@@ -27,6 +27,7 @@ clean:
 	find . \( -name '*.pyc' -o -name '*.pyo' \) -exec rm -f {} \;
 	rm -rf BUILD BUILDROOT RPMS SOURCES SPECS SRPMS
 	rm -rf */static/public/*/common.*
+	rm -rf dgscored*.rpm
 
 rpm:
 	QA_SKIP_BUILD_ROOT=1 rpmbuild --define "srcdir $(SRC_DIR)" --define "_topdir $(SRC_DIR)" -bb support/dgscored.spec
