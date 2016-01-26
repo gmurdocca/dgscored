@@ -63,7 +63,7 @@ class Hole(models.Model):
     par = models.IntegerField(default=3)
 
     def __unicode__(self):
-        return "Hole %s (Par %s)" % (self.number, self.par)
+        return "Hole %s (Par %s) - %s" % (self.number, self.par, self.layout_set.all())
 
 
 class Layout(models.Model):
@@ -99,7 +99,7 @@ class Score(models.Model):
     date = models.DateTimeField()
 
     def __unicode__(self):
-        return "%s - %s - %s" % (self.strokes, normalise(self.date).ctime(), self.contestant.player.name)
+        return "%s - %s - %s" % (self.strokes or "DNF", normalise(self.date).ctime(), self.contestant.player.name)
 
 
 class Card(models.Model):
