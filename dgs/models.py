@@ -55,7 +55,7 @@ class Contestant(models.Model):
     initial_handicap = models.IntegerField(blank=True, null=True, default=None)
 
     def __unicode__(self):
-        return "%s (%s)" % (self.player.full_name, self.league_set.all() and self.league_set.get() or "None")
+        return "(%s) %s" % (self.league_set.all() and self.league_set.get() or "None", self.player.full_name)
 
 
 class Hole(models.Model):
@@ -187,6 +187,8 @@ class Event(models.Model):
                         # this card counts
                         result.append(card)
         result = sorted(result, key=lambda x: x.date, reverse=True)[:n]
+        result = [int(c.result[contestant]['scratch_delta']) for c in result]
+        result = sorted(result)
         return result
 
     @property
@@ -233,7 +235,7 @@ class Event(models.Model):
                     continue
                 if not contestant in event_result:
                     event_result[contestant] = defaultdict(int)
-                event_result[contestant]['awards'] = "<br />".join([a.name for a in self.awards.filter(contestant=contestant)])
+                event_result[contestant]['awards'] = [a.name for a in self.awards.filter(contestant=contestant)]
                 if card.completed(contestant):
                     event_result[contestant]['round_count'] += 1
                 event_result[contestant]['completed_event'] = event_result[contestant]['round_count'] >= self.rounds 
@@ -251,11 +253,9 @@ class Event(models.Model):
                 event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - \
                         (round(previous_handicap) * event_result[contestant]['round_count']))
             # calculate new handicap
-            latest_max_cards = self.get_latest_cards(contestant, settings.HANDICAP_MAX_ROUNDS)
-            # sort by scratch_delta
-            best_min_cards = sorted(latest_max_cards, key=lambda x: x.result[contestant]['scratch_delta'])[:settings.HANDICAP_MIN_ROUNDS]
+            latest_n_results = self.get_latest_cards(contestant, settings.HANDICAP_MAX_ROUNDS_AVG)
             # calculate average:
-            best_scratch_deltas = [int(c.result[contestant]["scratch_delta"]) for c in best_min_cards]
+            best_scratch_deltas = latest_n_results[:settings.HANDICAP_MIN_ROUNDS_AVG]
             if not best_scratch_deltas:
                 event_result[contestant]['handicap'] = previous_handicap
             else:

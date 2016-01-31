@@ -147,14 +147,13 @@
                             {% endif %}
                           </td>
                           <td>{% if stats.points_earned != None %}{{ stats.points_earned }}{% else %}-{% endif %}</td>
-                          <td>{% if stats.awards %}{{ stats.awards }}{% else %}-{% endif %}</td>
+                          <td>{% if stats.awards %}{% for award in stats.awards %}{% if forloop.counter0 != 0 %}<br />{% endif %}{{ award }}{% endfor %}{% else %}-{% endif %}</td>
                         </tr>
                       {% endfor %}
                     </table>
                     </small>
                     </div>
                     {% endfor %}
-                    <hr>
                     {% endfor %}
                 </div>
             </div>
@@ -193,7 +192,6 @@
                     </div>
                     {% endfor %}
                     {% endfor %}
-                    <hr>
                     {% endfor %}
                 </div>
             </div>

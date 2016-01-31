@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
 {% load i18n %}
+{% load bootstrap3 %}
 
 {% block title %}{{ title }} | {% trans 'DG League Tracker - site admin' %}{% endblock %}
 
@@ -8,11 +9,3 @@
 {% endblock %}
 
 {% block nav-global %}{% endblock %}
-
-{% block extrastyle %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.9.4/css/bootstrap-select.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.9.4/js/bootstrap-select.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.9.4/js/i18n/defaults-*.min.js"></script>
-{% endblock %}
-
-

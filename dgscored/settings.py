@@ -144,12 +144,14 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Uncomment the next line to enable the admin:
+    'bootstrap3',
+    'django_admin_bootstrapped',
     'django.contrib.admin',
-    # Uncomment the next line to enable admin documentation:
     'django.contrib.admindocs',
     'dgs',
 )
+
+#DAB_FIELD_RENDERER = 'django_admin_bootstrapped.renderers.BootstrapFieldRenderer'
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
 
@@ -182,7 +184,26 @@ LOGGING = {
     }
 }
 
+# Points assignments for league event ranking (based on HC adjusted total score).
+# Index of list is rank, value is points earned. Last element of list is used as the
+# minimum attainable points for a contestant who does not complete a league event, or
+# who does not yet have enough rounds recorded in league to calculate a HC.
 LEAGUE_POINTS = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+# A value that is multiplied against a contestant's raw HC delta for their best N of M
+# cards in the current league. N and M are the two *_AVG values congigured below
 HANDICAP_MULTIPLIER = .8
+
+# The minimum number of rounds required before a HC is evaluated for a contestant if they
+# do not have an initial HC. The contestant will still earn min attainable points for
+# the league attendance even without an initial HC while they are accruing the requisite
+# number of rounds for a HC. Previous events will be retro-calculated using newly calculated
+# HC meaning points and ranks will move in retrospect when players get a HC.
 HANDICAP_MIN_ROUNDS = 2
-HANDICAP_MAX_ROUNDS = 5
+
+# Use at most the last HANDICAP_MIN_ROUNDS_AVG best score cards to calculate new HC
+HANDICAP_MIN_ROUNDS_AVG = 5
+
+# Don't consider cards older than HANDICAP_MAX_ROUNDS_AVG when calculating new HC
+HANDICAP_MAX_ROUNDS_AVG = 8
+
