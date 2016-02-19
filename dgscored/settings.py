@@ -6,7 +6,6 @@ def join_paths(*args):
     return os.path.join(*args) + os.path.sep
 
 DEBUG = True
-TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
@@ -90,13 +89,6 @@ STATICFILES_FINDERS = (
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = '%z^8wkl@jz4k!@inulo!gg368sa-78&9t!rjrf=027fi16g5^n'
-
-# List of callables that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-#     'django.template.loaders.eggs.Loader',
-)
 
 TEMPLATES = [
     {
