@@ -176,6 +176,15 @@ LOGGING = {
     }
 }
 
+# Cache setting
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'dgs_cache',
+    }
+}
+
+
 # Points assignments for league event ranking (based on HC adjusted total score).
 # Index of list is rank, value is points earned. Last element of list is used as the
 # minimum attainable points for a contestant who does not complete a league event, or

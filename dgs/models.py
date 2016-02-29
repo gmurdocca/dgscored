@@ -1,4 +1,6 @@
 from collections import OrderedDict, defaultdict
+from django.db.models import signals
+from django.core.cache import cache
 from django.utils import timezone
 from dgscored import settings
 from django.db import models
@@ -6,6 +8,7 @@ import pytz
 
 timezone.activate(pytz.timezone(settings.TIME_ZONE))
 current_tz = timezone.get_current_timezone()
+
 
 def normalise(date):
     return current_tz.normalize(date)
@@ -316,7 +319,6 @@ class League(models.Model):
     name = models.CharField(max_length=50)
     contentants = models.ManyToManyField(Contestant, blank=True)
     events = models.ManyToManyField(Event, blank=True)
-    min_rounds = settings.HANDICAP_MIN_ROUNDS
 
     def __unicode__(self):
         return "%s" % self.name
@@ -354,3 +356,10 @@ class League(models.Model):
         standings = OrderedDict(sorted(standings.iteritems(), key=lambda x: x[1]['rank']))
         return standings
 
+
+def model_change_handler(sender, instance, **kwargs):
+    # Model changed, invalidate cache. Next view will be a lengthy recalculation to re-populate our cache.
+    cache.clear() 
+
+signals.post_save.connect(model_change_handler)
+signals.post_delete.connect(model_change_handler)
