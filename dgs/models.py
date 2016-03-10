@@ -55,7 +55,7 @@ class Player(models.Model):
 
 class Contestant(models.Model):
     player = models.ForeignKey(Player)
-    initial_handicap = models.IntegerField(blank=True, null=True, default=None)
+    initial_handicap = models.FloatField(blank=True, null=True, default=None)
 
     def __unicode__(self):
         return "(%s) %s" % (self.league_set.all() and self.league_set.get() or "None", self.player.full_name)
