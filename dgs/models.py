@@ -317,7 +317,7 @@ class Event(models.Model):
 
 class League(models.Model):
     name = models.CharField(max_length=50)
-    contentants = models.ManyToManyField(Contestant, blank=True)
+    contestants = models.ManyToManyField(Contestant, blank=True)
     events = models.ManyToManyField(Event, blank=True)
 
     def __unicode__(self):
