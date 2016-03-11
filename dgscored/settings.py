@@ -140,6 +140,9 @@ INSTALLED_APPS = (
     'django_admin_bootstrapped',
     'django.contrib.admin',
     'django.contrib.admindocs',
+    'rest_framework',
+    'rest_framework_swagger',
+    'django_extensions',
     'dgs',
 )
 
@@ -184,6 +187,15 @@ CACHES = {
     }
 }
 
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        #'rest_framework.permissions.IsAdminUser',
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
+    ],
+    'PAGE_SIZE': 10
+}
+
+LOGIN_REDIRECT_URL = ('/')
 
 # Points assignments for league event ranking (based on HC adjusted total score).
 # Index of list is rank, value is points earned. Last element of list is used as the

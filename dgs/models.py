@@ -14,6 +14,9 @@ def normalise(date):
     return current_tz.normalize(date)
 
 class Player(models.Model):
+    """
+    A model for a Human DG player.
+    """
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     email_address = models.EmailField(blank=True, null=True)
@@ -54,6 +57,11 @@ class Player(models.Model):
 
 
 class Contestant(models.Model):
+    """
+    A model for a Contestant in a League.
+    Links to a player and and adds an optional initial handicap which will be used in the related League of which a Contestant is a member.
+    This design allows for separate Handicap tracking per league for players.
+    """
     player = models.ForeignKey(Player)
     initial_handicap = models.FloatField(blank=True, null=True, default=None)
 
