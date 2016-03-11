@@ -327,6 +327,7 @@ class League(models.Model):
     name = models.CharField(max_length=50)
     contestants = models.ManyToManyField(Contestant, blank=True)
     events = models.ManyToManyField(Event, blank=True)
+    min_rounds = settings.HANDICAP_MIN_ROUNDS
 
     def __unicode__(self):
         return "%s" % self.name
