@@ -4,7 +4,7 @@ Release:        1%{?dist}
 Summary:        DGScored is a Disc Golf League tracking web application.
 License:        GPLv2
 BuildRequires:  rpm-build make python python-pip python-virtualenv git gcc systemd mysql-devel
-Requires:       python systemd nginx mysql mysql-server
+Requires:       python systemd nginx mysql mysql-server graphviz
 
 %description
 DGScored is a Disc Golf League tracking web application.
