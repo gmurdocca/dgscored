@@ -91,7 +91,7 @@
                       <tr><th>Rank</th><th>Player</th><th>Events Attended</th><th>Current Handicap</th><th>Total Points</th></tr>
                       {% for player, stats in league.result.items %}
                       {% if not stats.valid_hc %}
-                      <tr><td><span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="HC required for rank (Must play {{ league.min_rounds }} rounds)." style="cursor: pointer; color: #18BC9C;"></span></td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>-</td><td>-</td></tr>
+                      <tr><td><span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="HC required for rank (Must play {{ league.handicap_min_rounds }} rounds)." style="cursor: pointer; color: #18BC9C;"></span></td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>-</td><td>-</td></tr>
                       {% else %}
                       <tr><td>{{ stats.rank }}</td><td>{{ player }}</td><td>{{ stats.events_attended }}</td><td>{{ stats.handicap }}</td><td>{{ stats.points }}</td></tr>
                       {% endif %}
@@ -132,7 +132,7 @@
                             {% if stats.points_earned %}
                               {{ stats.rank }}
                             {% else %}
-                              <span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="HC required for rank (Must play {{ league.min_rounds }} rounds)." style="cursor: pointer; color: #18BC9C;">
+                              <span class="pop glyphicon glyphicon-question-sign" data-toggle="popover" data-content="HC required for rank (Must play {{ league.handicap_min_rounds }} rounds)." style="cursor: pointer; color: #18BC9C;">
                               </span>
                             {% endif %}
                           </td>

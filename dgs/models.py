@@ -215,9 +215,10 @@ class Event(models.Model):
         did not complete Event.rounds rounds, then they earned minimum points for
         attendance, eg one point.
         """
-        if 0 > rank or rank >= len(settings.LEAGUE_POINTS):
-            return settings.LEAGUE_POINTS[-1]
-        return settings.LEAGUE_POINTS[rank]
+        league_points = self.league_set.get().get_league_points()
+        if 0 > rank or rank >= len(league_points):
+            return league_points[-1]
+        return league_points[rank]
 
     @staticmethod
     def get_previous_handicap(event, contestant):
@@ -240,6 +241,7 @@ class Event(models.Model):
         Returns a per-player results dict including points earned by contestants during this event, ordered by rank.
         Returns result for specified for_contestant or all if None.
         """
+        league = self.league_set.get()
         event_result = {}
         for card in self.cards.all():
             card_result = card.result
@@ -266,19 +268,19 @@ class Event(models.Model):
                 event_result[contestant]['handicap_score'] = int(event_result[contestant]['scratch_score'] - \
                         (round(previous_handicap) * event_result[contestant]['round_count']))
             # calculate new handicap
-            latest_n_results = self.get_latest_cards(contestant, settings.HANDICAP_MAX_ROUNDS_AVG)
+            latest_n_results = self.get_latest_cards(contestant, league.handicap_max_rounds_avg)
             # calculate average:
-            best_scratch_deltas = latest_n_results[:settings.HANDICAP_MIN_ROUNDS_AVG]
+            best_scratch_deltas = latest_n_results[:league.handicap_min_rounds_avg]
             if not best_scratch_deltas:
                 event_result[contestant]['handicap'] = previous_handicap
             else:
                 handicap = reduce(lambda x, y: float(x) + float(y), best_scratch_deltas) / len(best_scratch_deltas)
                 # round to 2 decimal places
-                handicap = round(handicap * settings.HANDICAP_MULTIPLIER, 2)
+                handicap = round(handicap * league.handicap_multiplier, 2)
                 event_result[contestant]['handicap'] = handicap
                 # inject the handicap into the contestant's initial handicap value if they played the required number of rounds
                 total_rounds = sum([sum([c.scores.filter(contestant=contestant).count() for c in e.cards.all()]) for e in self.league_set.last().events.all()])
-                if contestant.initial_handicap == None and total_rounds == settings.HANDICAP_MIN_ROUNDS:
+                if contestant.initial_handicap == None and total_rounds == league.handicap_min_rounds:
                     contestant.initial_handicap = handicap
                     contestant.save()
 
@@ -329,10 +331,33 @@ class League(models.Model):
     name = models.CharField(max_length=50)
     contestants = models.ManyToManyField(Contestant, blank=True)
     events = models.ManyToManyField(Event, blank=True)
-    min_rounds = settings.HANDICAP_MIN_ROUNDS
+    league_points = models.CharField(verbose_name="League Points Assignment", max_length=50, default="10,9,8,7,6,5,4,3,2,1", help_text="""
+Points assignments for league event ranking (based on HC adjusted total score).
+Index of list is rank, value is points earned. Last element of list is used as the
+minimum attainable points for a contestant who does not complete a league event, or
+who does not yet have enough rounds recorded in league to calculate a HC. Must be a comma separated list of integers.
+            """)
+    handicap_multiplier = models.FloatField(default=0.8, help_text="""
+A value that is multiplied against a contestant's raw HC delta average. The result of this calculation becomes the contestant's current HC.""")
+    handicap_min_rounds = models.IntegerField(verbose_name="Min rounds for HC", default=2, help_text="""
+The minimum number of rounds required before a HC is evaluated for a contestant if they
+do not have an initial HC. The contestant will still earn min attainable points for
+the league attendance even without an initial HC while they are accruing the requisite
+number of rounds for a HC. Previous events will be retro-calculated using newly calculated
+HC meaning points and ranks will move in retrospect when a contestant finally plays enough rounds to get a HC.
+""")
+    handicap_min_rounds_avg = models.IntegerField(verbose_name="Best Cards to use for HC", default=5, help_text="""
+The max number of best score cards to use to calculate a player's current HC
+""")
+    handicap_max_rounds_avg = models.IntegerField(verbose_name="Max Cards to consider for HC", default=8, help_text="""
+The number of past cards to consider when chosing the best cards for a player for their HC calculation. This value needs to be larger than the number of best cards used for HC calculation above.
+""")
 
     def __unicode__(self):
         return "%s" % self.name
+
+    def get_league_points(self):
+        return [int(p.strip()) for p in self.league_points.split(',')]
 
     @property
     def result(self):
@@ -350,7 +375,7 @@ class League(models.Model):
                 standings[player]['rounds_played'] += sum([c.scores.filter(contestant=contestant).count() for c in event.cards.all()])
         # flag playeres who have not completed enough rounds to be ranked
         for player in standings:
-            if standings[player]['initial_handicap'] == None and standings[player]['rounds_played'] < settings.HANDICAP_MIN_ROUNDS:
+            if standings[player]['initial_handicap'] == None and standings[player]['rounds_played'] < self.handicap_min_rounds:
                 standings[player]['valid_hc'] = False
             else:
                 standings[player]['valid_hc'] = True

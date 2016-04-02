@@ -22,7 +22,7 @@ router.register(r'api/league', dgs.views.LeagueViewSet)
 
 
 urlpatterns = [
-    url(r'^favicon\.ico$', RedirectView.as_view(url='/static/favicon.ico')),
+    url(r'^favicon\.ico$', RedirectView.as_view(permanent=False, url='/static/favicon.ico')),
     url(r'^admin/', include(admin.site.urls)),
     url(r'^$', dgs.views.home, name='home'),
     url(r'^api/', include('rest_framework.urls', namespace='rest_framework')),
