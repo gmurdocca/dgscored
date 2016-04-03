@@ -88,7 +88,7 @@ class Layout(models.Model):
         return sum([h.par for h in self.holes.all()])
 
     def __unicode__(self):
-        return self.name
+        return "%s (Par %s)" % (self.name, self.par)
 
     @property
     def hole_count(self):
