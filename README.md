@@ -13,29 +13,46 @@ DGScored is a Disc Golf league tracking app that supports:
 
 For a fresh install, you must create the "dgscored" database in MySQL/MariaDB. Run the query:
 
-    create database dgscored;
+```sql
+create database dgscored;
+```
+
 
 Start the dgscored virtual env from the root of the git repo:
 
-    . $(make env)
+```bash
+. $(make env)
+```
+
+Create the db cache table:
+
+```bash
+dgscored createcachetable
+```
 
 Create the database tables:
 
-    dgscored migrate
-
+```bash
+dgscored migrate
+```
 Create admin user:
 
-    dgscored createsuperuser
-
+```bash
+dgscored createsuperuser
+```
 
 ## Starting the dgscored development server:
 
 Start the dgscored virtual env (if not already started):
 
-    . $(make env)
+```bash
+. $(make env)
+```
 
 Start the web server:
 
-    dgscored runserver
+```bash
+dgscored runserver
+```
 
 Point your browser to the above webserver to use the app.
