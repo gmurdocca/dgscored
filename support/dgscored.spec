@@ -3,8 +3,8 @@ Version:        %(date +%Y%m%d%H%M)_%(git rev-list HEAD --count)
 Release:        1%{?dist}
 Summary:        DGScored is a Disc Golf League tracking web application.
 License:        GPLv2
-BuildRequires:  rpm-build make python python-pip python-virtualenv git gcc systemd mysql-devel
-Requires:       python systemd nginx mysql mysql-server graphviz
+BuildRequires:  rpm-build make python python-pip python-virtualenv git gcc systemd mariadb-devel
+Requires:       python systemd nginx mariadb-server graphviz
 
 %description
 DGScored is a Disc Golf League tracking web application.
@@ -23,7 +23,7 @@ virtualenv %{buildroot}/opt/%{name}
 %{buildroot}/opt/%{name}/bin/python %{buildroot}/opt/%{name}/bin/pip install %{srcdir}
 %{buildroot}/opt/%{name}/bin/python %{buildroot}/opt/%{name}/bin/dgscored collectstatic --noinput
 virtualenv --relocatable %{buildroot}/opt/%{name}
-prelink -u %{buildroot}/opt/%{name}/bin/python
+#prelink -u %{buildroot}/opt/%{name}/bin/python
 rm -f %{buildroot}/opt/%{name}/bin/{activate,activate.*} %{buildroot}/opt/%{name}/lib64
 
 # copy supporting files across
@@ -37,8 +37,8 @@ ln -s /opt/%{name}/bin/%{name} %{buildroot}/usr/local/bin
 %files
 %attr(-, %{name}, %{name}) /opt/%{name}/
 %attr(-, root, root) /usr/lib/systemd/system/%{name}.service
-%attr(-, root, root) /etc/nginx/conf.d/%{name}.conf
 %attr(0755, root, root) /usr/local/bin/%{name}
+%config(-, root, root) /etc/nginx/conf.d/%{name}.conf
 
 %pre
 /bin/systemctl stop %{name}.service > /dev/null 2>&1 || :
@@ -57,8 +57,8 @@ if [ $1 -eq 1 ] ; then  # Initial installation
     # Make sure the default nginx config is removed (it conflicts)
     rm -f /etc/nginx/conf.d/default.conf
 fi
-# Make sure mysqld is started
-/bin/systemctl start mysqld.service > /dev/null 2>&1 || :
+# Make sure mariadb is started
+/bin/systemctl start mariadb.service > /dev/null 2>&1 || :
 
 # Create the database
 mysql -uroot -e "

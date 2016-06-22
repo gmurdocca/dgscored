@@ -32,7 +32,6 @@ clean:
 rpm:
 	QA_SKIP_BUILD_ROOT=1 rpmbuild --define "srcdir $(SRC_DIR)" --define "_topdir $(SRC_DIR)" -bb support/dgscored.spec
 	mv RPMS/x86_64/*.rpm .
-	make clean
 
 erd:
 	dgscored graph_models dgs -o dgs/static/img/dgs_models.png
