@@ -33,6 +33,7 @@ mkdir -p %{buildroot}/usr/lib/systemd/system/ \
 cp %{srcdir}/support/%{name}.service %{buildroot}/usr/lib/systemd/system/
 cp %{srcdir}/support/nginx.conf %{buildroot}/etc/nginx/conf.d/%{name}.conf
 ln -s /opt/%{name}/bin/%{name} %{buildroot}/usr/local/bin
+mkdir -p %{buildroot}/opt/dgscored/certbot/.well-known # certbot dir
 
 %files
 %attr(-, %{name}, %{name}) /opt/%{name}/

@@ -56,3 +56,74 @@ dgscored runserver
 ```
 
 Point your browser to the above webserver to use the app.
+
+
+## Deploying on a Production system
+
+DGScored has been tested on CentOS 7 with Nginx, uWSGI and free SSL using letsencrypt.org
+
+To create an RPM, first clone the Git repository on a CentOS 7 host:
+
+```bash
+git clone https://github.com/gmurdocca/dgscored.git
+```
+
+RPM build dependencies need to be installed first. To ensure they are:
+
+```bash
+sudo yum -y install yum-utils
+sudo yum-builddep support/dgscored.spec
+```
+
+Now build and install the RPM:
+
+```bash
+make rpm
+sudo yum -y localinstall dgscored*.rpm
+```
+
+Edit /etc/nginx/conf.d/dgscored.conf and configure your server's FQDN as described there in.
+
+Create your free SSL certificate using certbot:
+
+```bash
+sudo yum -y install certbot
+certbot certonly --webroot -w /opt/dgscored/certbot/ -d <YOUR_SERVER'S_FQDN>
+```
+
+Restart NginX
+
+```bash
+sudo systemctl restart nginx.service
+```
+
+Create an admin user:
+
+```bash
+dgscored createsuperuser
+```
+
+You should now be able to Browse to your FQDN and use the app.
+
+
+### Backup and SSL Certificate renewal
+
+To create daily backups of the database and configure automatic SSL certificate renewal:
+
+Create a backup directory:
+
+```bash
+mkdir /opt/dgscored/backups
+```
+
+Create a file /etc/cron.d/dgscored with contents:
+
+```bash
+# Create a DB backup at midnight each day
+0 0 * * * root bash --login -c "mysqldump -u root dgscored | gzip > /opt/dgscored/backups/dgscored_prod_backup.sql_$(date +"%Y.%m.%d_%s").gz"
+# Delete backups older than 30 days
+0 1 * * * root bash --login -c "find /opt/dgscored/backups/ -mtime +30 -type f | xargs rm -rf"
+# Renew ssl cert once per month (they expire after 90 days)
+0 0 15 * * root bash --login -c "certbot renew"
+```
+
