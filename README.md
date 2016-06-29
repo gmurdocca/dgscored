@@ -1,13 +1,17 @@
-# dgscored
+# DGScored
 
-DGScored is a Disc Golf league tracking app that supports:
+DGScored is a Disc Golf league tracking app that:
 
-* Track multiple leagues
+* Tracks multiple leagues
 * Calculates handicaps, adjusted scores, points and ranks per league
-* Separate handicaps per league for players
-* Simple web interface for data entry and presentation
+* Supports different league structures
+* Utilises a simple web interface for data entry and presentation
+
+## Screenshot of the main DGScored page
 
 ![Main page](http://imgur.com/eJaUNxG.png "Screenshot of the main DGScored page")
+
+## Screenshot of the Admin page for managing leagues
 
 ![Admin page](http://imgur.com/b260sGc.png "Screenshot of the Admin page for managing leagues")
 
