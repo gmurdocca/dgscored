@@ -39,7 +39,7 @@ mkdir -p %{buildroot}/opt/dgscored/certbot/.well-known # certbot dir
 %attr(-, %{name}, %{name}) /opt/%{name}/
 %attr(-, root, root) /usr/lib/systemd/system/%{name}.service
 %attr(0755, root, root) /usr/local/bin/%{name}
-%config(-, root, root) /etc/nginx/conf.d/%{name}.conf
+%config /etc/nginx/conf.d/%{name}.conf
 
 %pre
 /bin/systemctl stop %{name}.service > /dev/null 2>&1 || :
