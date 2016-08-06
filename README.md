@@ -128,10 +128,6 @@ Once certbot runs successfully, edit /etc/nginx/conf.d/dgscored.conf a final tim
 Restart NginX to enable SSL and https.
 
 ```bash
-systemctl restart nginx
-```
-
-```bash
 sudo systemctl restart nginx.service
 ```
 
