@@ -68,9 +68,21 @@ Point your browser to the above webserver to use the app.
 
 ## Deploying on a Production system
 
-DGScored has been tested on CentOS 7 with Nginx, uWSGI and free SSL using letsencrypt.org
+DGScored has been tested on CentOS 7 with Nginx, uWSGI and free SSL using letsencrypt.org.
 
-To create an RPM, first clone the Git repository on a CentOS 7 host:
+SELinux was set to permissive mode (ie. disabled, it may function in enforcing mode with the default policy but was not tested) and the server must accept connections on TCP/80 and TCP/443.
+
+To configure this environment on a fresh CentOS 7 system:
+
+```bash
+sudo setenforce 0
+sudo sed -i 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+sudo firewall-cmd --add-service=http --permanent
+sudo firewall-cmd --add-service=https --permanent
+sudo firewall-cmd --reload
+```
+
+To create the RPM for deployment, clone the DGScored Git repository on your CentOS 7 host:
 
 ```bash
 git clone https://github.com/gmurdocca/dgscored.git
@@ -90,16 +102,34 @@ make rpm
 sudo yum -y localinstall dgscored*.rpm
 ```
 
-Edit /etc/nginx/conf.d/dgscored.conf and configure your server's FQDN as described there in.
+Edit the NginX config file /etc/nginx/conf.d/dgscored.conf and configure your server's FQDN as described there in.
+
+Leave the lines beginning with `ssl_certificate` and `ssl_certificate_key` commented out for now because the files these lines reference don't yet exist.
+
+Refer to the comments in the above NginX config file which contain detailed instructions to this effect.
+
+After editing, restart nginx:
+
+```bash
+systemctl restart nginx
+```
+
+At this point, you should be able to browse to `http://<YOUR_SERVER'S_FQDN>/.well-known/` and see an empty Index directory listing entitled "Index of /.well-known/". This is required to function correctly in order for the next step to complete successfully.
 
 Create your free SSL certificate using certbot:
 
 ```bash
 sudo yum -y install certbot
-certbot certonly --webroot -w /opt/dgscored/certbot/ -d <YOUR_SERVER'S_FQDN>
+sudo certbot certonly --webroot -w /opt/dgscored/certbot/ -d <YOUR_SERVER'S_FQDN>
 ```
 
-Restart NginX
+Once certbot runs successfully, edit /etc/nginx/conf.d/dgscored.conf a final time and uncomment the lines beginning with `ssl_certificate` and `ssl_certificate_key`.
+
+Restart NginX to enable SSL and https.
+
+```bash
+systemctl restart nginx
+```
 
 ```bash
 sudo systemctl restart nginx.service
@@ -134,4 +164,17 @@ Create a file /etc/cron.d/dgscored with contents:
 # Renew ssl cert once per month (they expire after 90 days)
 0 0 15 * * root bash --login -c "certbot renew"
 ```
+
+#### Note:
+
+You will need to restart NginX after certbot pulls down a fresh certificate, else it appears to serve the old one (it reads it to memory based on a quick analysis using strace).
+
+Unfortunately it seems the certbot command doesn't use non-zero return codes for unsuccessful certificate updates, else you could simply issue a daily:
+
+```bash
+bash --login -c "certbot renew && system restart nginx.service"
+```
+Unfortunately this will restsart nginx every time that command is invoked rather than only when certbot renews the certificate.
+
+I'd love an elegant solution to this (perhaps a stat() the cert files and trigger on a change, maybe inotify although it seems heavy handed, perhaps certbot has a helpful feature, etc). Contributions would be most welcome :)
 
