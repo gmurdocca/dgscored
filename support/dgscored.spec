@@ -61,14 +61,12 @@ fi
 # Make sure mariadb is started
 /bin/systemctl start mariadb.service > /dev/null 2>&1 || :
 
-# Create the database
+# Initialise the database
 mysql -uroot -e "
     CREATE DATABASE IF NOT EXISTS dgscored;
-    GRANT ALL ON dgscored.* TO 'writer'@'localhost' IDENTIFIED BY 'writer';
     FLUSH PRIVILEGES;
 "
-
-# Syncdb
+/opt/%{name}/bin/%{name} createcachetable
 /opt/%{name}/bin/%{name} syncdb --noinput
 /opt/%{name}/bin/%{name} migrate --fake-initial
 

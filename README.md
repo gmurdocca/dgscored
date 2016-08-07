@@ -43,6 +43,7 @@ Create the database tables:
 ```bash
 dgscored migrate
 ```
+
 Create admin user:
 
 ```bash
