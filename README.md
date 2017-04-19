@@ -159,19 +159,5 @@ Create a file /etc/cron.d/dgscored with contents:
 # Delete backups older than 30 days
 0 1 * * * root bash --login -c "find /opt/dgscored/backups/ -mtime +30 -type f | xargs rm -rf"
 # Renew ssl cert once per month (they expire after 90 days)
-0 0 15 * * root bash --login -c "certbot renew"
+0 0 15 * * root bash --login -c "certbot renew | grep -q "No renewals were attempted" || systemctl restart nginx"
 ```
-
-#### Note:
-
-You will need to restart NginX after certbot pulls down a fresh certificate, else it appears to serve the old one (it reads it to memory based on a quick analysis using strace).
-
-Unfortunately it seems the certbot command doesn't use non-zero return codes for unsuccessful certificate updates, else you could simply issue a daily:
-
-```bash
-bash --login -c "certbot renew && system restart nginx.service"
-```
-Unfortunately this will restsart nginx every time that command is invoked rather than only when certbot renews the certificate.
-
-I'd love an elegant solution to this (perhaps a stat() the cert files and trigger on a change, maybe inotify although it seems heavy handed, perhaps certbot has a helpful feature, etc). Contributions would be most welcome :)
-
